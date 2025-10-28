@@ -1,0 +1,1580 @@
+import { ChangeDetectionStrategy, Component, signal, computed, WritableSignal, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+// Importações do Firebase (essenciais para o banco de dados)
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth, onAuthStateChanged, signInAnonymously, User, signInWithCustomToken } from 'firebase/auth';
+import { 
+    getFirestore, Firestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, 
+    onSnapshot, query, QuerySnapshot, DocumentData, getDocs, setLogLevel
+} from 'firebase/firestore';
+
+// Importações para gerar PDF - REMOVIDAS
+// import jsPDF from 'jspdf';
+// import autoTable from 'jspdf-autotable';
+
+// Declaração global para o jsPDF que será carregado via script
+declare var jspdf: any;
+
+// --- Interfaces (Modelos de Dados) ---
+interface Associado {
+  id: string;
+  nome: string;
+  endereco: string;
+  telefone: string;
+  email: string;
+  cargo: string;
+  obs: string;
+}
+
+interface Utilidade {
+  id: string;
+  nome: string;
+  endereco: string;
+  telefone: string;
+  email: string;
+  descricao: string; // Para horários e etc.
+}
+
+interface SAC {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  texto: string;
+  tipo: 'reclamacao' | 'sugestao' | 'denuncia';
+  status: 'resolvido' | 'analise' | 'nao_resolvido';
+}
+
+interface Agenda {
+  id: string;
+  local: string;
+  tipo: string; // Reunião, Assembleia, etc.
+  telefone: string;
+  dataHora: string;
+  ata: string; // Texto sobre o que aconteceu
+}
+
+interface Caixa {
+  id: string;
+  data: string;
+  tipo: 'entrada' | 'saida';
+  valor: number;
+  descricao: string;
+  pessoa?: string; // Quem doou
+  destino?: string; // Para onde foi o dinheiro
+}
+
+// --- Variáveis de Configuração do Firebase (Injetadas pelo Ambiente) ---
+declare var __firebase_config: string;
+declare var __app_id: string;
+declare var __initial_auth_token: string;
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <!-- Indicador de Carregamento Global -->
+    @if (isLoading()) {
+      <div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[9999]">
+        <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500"></div>
+      </div>
+    }
+
+    <div class="flex flex-col min-h-screen bg-blue-50 text-gray-900 font-inter">
+      <!-- Cabeçalho -->
+      <header class="bg-white border-b border-gray-200 sticky top-0 z-[1000] shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between items-center h-16">
+            <!-- Logo -->
+            <div class="flex-shrink-0 flex items-center gap-3">
+              <!-- LOGO AQUI -->
+              @if(logoUrl()) {
+                <img class="h-10 w-auto" [src]="logoUrl()" alt="Logo da Associação" (error)="onLogoError()">
+              }
+              <span class="text-xl lg:text-2xl font-bold text-blue-600 leading-tight">Associação de Moradores do Jardim John Kennedy</span>
+            </div>
+            
+            <!-- Menu Desktop -->
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <a (click)="mudarPagina('inicio')" [class]="linkClasses('inicio')" role="button">Início</a>
+              <a (click)="mudarPagina('caixa')" [class]="linkClasses('caixa')" role="button">Caixa</a>
+              <a (click)="mudarPagina('associados')" [class]="linkClasses('associados')" role="button">Associados</a>
+              <a (click)="mudarPagina('colaboradores')" [class]="linkClasses('colaboradores')" role="button">Colaboradores</a>
+              <a (click)="mudarPagina('utilidades')" [class]="linkClasses('utilidades')" role="button">Utilidades</a>
+              <a (click)="mudarPagina('sac')" [class]="linkClasses('sac')" role="button">SAC</a>
+              <a (click)="mudarPagina('agenda')" [class]="linkClasses('agenda')" role="button">Agenda</a>
+            </div>
+
+            <!-- Botão Menu Mobile -->
+            <div class="flex items-center sm:hidden">
+              <button (click)="toggleMenuMobile()" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                <span class="sr-only">Abrir menu</span>
+                <!-- Ícone Hambúrguer -->
+                <svg [class]="{'hidden': menuAberto(), 'block': !menuAberto()}" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+                <!-- Ícone X -->
+                <svg [class]="{'block': menuAberto(), 'hidden': !menuAberto()}" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Menu Mobile Dropdown -->
+        @if (menuAberto()) {
+          <div class="sm:hidden bg-white shadow-lg">
+            <div class="pt-2 pb-3 space-y-1">
+              <a (click)="mudarPagina('inicio')" [class]="linkClassesMobile('inicio')" role="button">Início</a>
+              <a (click)="mudarPagina('caixa')" [class]="linkClassesMobile('caixa')" role="button">Caixa</a>
+              <a (click)="mudarPagina('associados')" [class]="linkClassesMobile('associados')" role="button">Associados</a>
+              <a (click)="mudarPagina('colaboradores')" [class]="linkClassesMobile('colaboradores')" role="button">Colaboradores</a>
+              <a (click)="mudarPagina('utilidades')" [class]="linkClassesMobile('utilidades')" role="button">Utilidades</a>
+              <a (click)="mudarPagina('sac')" [class]="linkClassesMobile('sac')" role="button">SAC</a>
+              <a (click)="mudarPagina('agenda')" [class]="linkClassesMobile('agenda')" role="button">Agenda</a>
+            </div>
+          </div>
+        }
+      </header>
+
+      <!-- Conteúdo Principal -->
+      <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8 relative">
+        
+        <!-- MARCA D'ÁGUA AQUI -->
+        @if(watermarkUrl()) {
+          <div class="absolute inset-0 flex items-center justify-center opacity-10 z-0 pointer-events-none">
+            <img [src]="watermarkUrl()" alt="Marca d'água" class="max-w-md w-full" (error)="onWatermarkError()">
+          </div>
+        }
+
+        <!-- Conteúdo principal precisa estar na frente -->
+        <div class="relative z-10">
+          @switch (paginaAtual()) {
+            
+            <!-- PÁGINA: INÍCIO (DASHBOARD & BACKUP) -->
+            @case ('inicio') {
+            <div class="space-y-6">
+              <h1 class="text-3xl font-bold text-gray-900">Painel de Controle</h1>
+              <p class="text-lg text-gray-700">Bem-vindo ao sistema de gestão da associação. Seu ID de usuário é: <strong class="text-blue-600 select-all">{{ userId() }}</strong></p>
+              
+              <!-- Stats Rápidas -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                  <h3 class="text-lg font-semibold text-blue-600">Associados</h3>
+                  <p class="text-4xl font-bold text-gray-900">{{ associados().length }}</p>
+                </div>
+                <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                  <h3 class="text-lg font-semibold text-green-600">Saldo em Caixa</h3>
+                  <p class="text-4xl font-bold text-gray-900">{{ formatarMoeda(saldoCaixa()) }}</p>
+                </div>
+                <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                  <h3 class="text-lg font-semibold text-yellow-600">SAC Pendentes</h3>
+                  <p class="text-4xl font-bold text-gray-900">{{ sacPendentes() }}</p>
+                </div>
+              </div>
+
+              <!-- Backup e Restore -->
+              <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Backup e Restauração</h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                  <button (click)="fazerBackup()" class="btn-primary flex-1 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Fazer Backup de Todos os Dados
+                  </button>
+                  <label class="btn-secondary flex-1 flex items-center justify-center gap-2 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" d="M11 14a1 1 0 01-1-1V6.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 6.414V13a1 1 0 01-1 1z M4 3a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" />
+                    </svg>
+                    Restaurar Backup (.json)
+                    <input type="file" class="hidden" (change)="restaurarBackup($event)" accept=".json">
+                  </label>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: CAIXA -->
+          @case ('caixa') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">Livro Caixa</h1>
+                <div class="flex flex-wrap gap-2">
+                  <button (click)="gerarRelatorioCaixaPDF()" class="btn-secondary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Imprimir PDF
+                  </button>
+                  <!-- Botão Nova Saída -->
+                  <button (click)="abrirModal('caixa', null, 'saida')" class="btn-danger flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                    + Nova Saída
+                  </button>
+                  <!-- Botão Nova Entrada -->
+                  <button (click)="abrirModal('caixa', null, 'entrada')" class="btn-green flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    + Nova Entrada
+                  </button>
+                </div>
+              </div>
+
+              <!-- Stats do Caixa -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                  <h3 class="text-lg font-semibold text-green-600">Total Entradas</h3>
+                  <p class="text-3xl font-bold text-green-700">{{ formatarMoeda(totalEntradas()) }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                  <h3 class="text-lg font-semibold text-red-600">Total Saídas</h3>
+                  <p class="text-3xl font-bold text-red-700">{{ formatarMoeda(totalSaidas()) }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                  <h3 class="text-lg font-semibold text-blue-600">Saldo Atual</h3>
+                  <p class="text-3xl font-bold text-blue-700">{{ formatarMoeda(saldoCaixa()) }}</p>
+                </div>
+              </div>
+
+              <!-- Tabela de Lançamentos -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Data</th>
+                      <th class="th-pad">Tipo</th>
+                      <th class="th-pad">Descrição</th>
+                      <th class="th-pad">Doador/Destino</th>
+                      <th class="th-pad text-right">Valor</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of caixa(); track item.id) {
+                      <tr>
+                        <td class="td-pad">{{ formatarData(item.data) }}</td>
+                        <td class="td-pad">
+                          <span [class]="item.tipo === 'entrada' ? 'badge-green' : 'badge-red'">
+                            {{ item.tipo | titlecase }}
+                          </span>
+                        </td>
+                        <td class="td-pad">{{ item.descricao }}</td>
+                        <td class="td-pad">{{ item.tipo === 'entrada' ? item.pessoa : item.destino }}</td>
+                        <td class="td-pad text-right font-medium" [class]="item.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'">
+                          {{ formatarMoeda(item.valor) }}
+                        </td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button (click)="imprimirComprovante(item)" class="btn-icon-secondary" title="Imprimir Comprovante">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                          </button>
+                          <button (click)="abrirModal('caixa', item)" class="btn-icon-secondary" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('caixa', item.id)" class="btn-icon-danger" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="p-6 text-center text-gray-500">Nenhum lançamento encontrado.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: ASSOCIADOS -->
+          @case ('associados') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">Associados</h1>
+                <div class="flex gap-2">
+                  <button (click)="imprimirListaPDF('associados', associadosFiltrados(), ['Nome', 'Email', 'Telefone', 'Cargo'])" class="btn-secondary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Imprimir PDF
+                  </button>
+                  <button (click)="abrirModal('associados')" class="btn-primary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Novo Associado
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Barra de Pesquisa -->
+              <input type="text" placeholder="Pesquisar por nome, email ou cargo..." 
+                     class="form-input w-full"
+                     [value]="filtroTermo()" 
+                     (input)="filtroTermo.set($event.target.value)">
+
+              <!-- Tabela de Associados -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Nome</th>
+                      <th class="th-pad">Email</th>
+                      <th class="th-pad">Telefone</th>
+                      <th class="th-pad">Cargo</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of associadosFiltrados(); track item.id) {
+                      <tr>
+                        <td class="td-pad font-medium text-gray-900">{{ item.nome }}</td>
+                        <td class="td-pad">{{ item.email }}</td>
+                        <td class="td-pad">{{ item.telefone }}</td>
+                        <td class="td-pad">{{ item.cargo }}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button (click)="abrirModal('associados', item)" class="btn-icon-secondary" title="Editar/Ver Detalhes">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('associados', item.id)" class="btn-icon-danger" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="p-6 text-center text-gray-500">Nenhum associado encontrado.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: COLABORADORES -->
+          @case ('colaboradores') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">Colaboradores</h1>
+                <div class="flex gap-2">
+                  <button (click)="imprimirListaPDF('colaboradores', colaboradoresFiltrados(), ['Nome', 'Email', 'Telefone', 'Cargo'])" class="btn-secondary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Imprimir PDF
+                  </button>
+                  <button (click)="abrirModal('colaboradores')" class="btn-primary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Novo Colaborador
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Barra de Pesquisa -->
+              <input type="text" placeholder="Pesquisar por nome, email ou cargo..." 
+                     class="form-input w-full"
+                     [value]="filtroTermo()" 
+                     (input)="filtroTermo.set($event.target.value)">
+
+              <!-- Tabela de Colaboradores -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Nome</th>
+                      <th class="th-pad">Email</th>
+                      <th class="th-pad">Telefone</th>
+                      <th class="th-pad">Cargo</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of colaboradoresFiltrados(); track item.id) {
+                      <tr>
+                        <td class="td-pad font-medium text-gray-900">{{ item.nome }}</td>
+                        <td class="td-pad">{{ item.email }}</td>
+                        <td class="td-pad">{{ item.telefone }}</td>
+                        <td class="td-pad">{{ item.cargo }}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button (click)="abrirModal('colaboradores', item)" class="btn-icon-secondary" title="Editar/Ver Detalhes">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('colaboradores', item.id)" class="btn-icon-danger" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="p-6 text-center text-gray-500">Nenhum colaborador encontrado.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: UTILIDADES -->
+          @case ('utilidades') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">Utilidades Públicas</h1>
+                <div class="flex gap-2">
+                  <button (click)="imprimirListaPDF('utilidades', utilidades(), ['Nome', 'Telefone', 'Endereço'])" class="btn-secondary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Imprimir PDF
+                  </button>
+                  <button (click)="abrirModal('utilidades')" class="btn-primary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Novo Local
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tabela de Utilidades -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Estabelecimento</th>
+                      <th class="th-pad">Telefone</th>
+                      <th class="th-pad">Endereço</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of utilidades(); track item.id) {
+                      <tr>
+                        <td class="td-pad font-medium text-gray-900">{{ item.nome }}</td>
+                        <td class="td-pad">{{ item.telefone }}</td>
+                        <td class="td-pad">{{ item.endereco }}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button (click)="abrirModal('utilidades', item)" class="btn-icon-secondary" title="Editar/Ver Detalhes">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('utilidades', item.id)" class="btn-icon-danger" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="p-6 text-center text-gray-500">Nenhum local de utilidade cadastrado.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: SAC -->
+          @case ('sac') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">SAC - Atendimento</h1>
+                <button (click)="abrirModal('sac')" class="btn-primary flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                  Novo Registro
+                </button>
+              </div>
+
+              <!-- Barra de Pesquisa SAC -->
+              <input type="text" placeholder="Pesquisar por reclamante, tipo ou status..." 
+                     class="form-input w-full"
+                     [value]="filtroTermo()" 
+                     (input)="filtroTermo.set($event.target.value)">
+
+              <!-- Tabela de SAC -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Reclamante</th>
+                      <th class="th-pad">Tipo</th>
+                      <th class="th-pad">Status</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of sacFiltrados(); track item.id) {
+                      <tr>
+                        <td class="td-pad font-medium text-gray-900">{{ item.nome }}</td>
+                        <td class="td-pad">{{ item.tipo | titlecase }}</td>
+                        <td class="td-pad">
+                          <select [value]="item.status" 
+                                  (change)="mudarStatusSAC(item.id, $event.target.value)"
+                                  class="form-select status-select" 
+                                  [class]="getStatusClass(item.status)">
+                            <option value="resolvido">Resolvido</option>
+                            <option value="analise">Em Análise</option>
+                            <option value="nao_resolvido">Não Resolvido</option>
+                          </select>
+                        </td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                           <button (click)="imprimirSacPDF(item)" class="btn-icon-secondary" title="Imprimir PDF">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                          </button>
+                          <button (click)="abrirModal('sac', item)" class="btn-icon-secondary" title="Editar/Ver Detalhes">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('sac', item.id)" class="btn-icon-danger" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="p-6 text-center text-gray-500">Nenhum registro no SAC.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- PÁGINA: AGENDA -->
+          @case ('agenda') {
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">Agenda de Eventos</h1>
+                <div class="flex gap-2">
+                  <button (click)="imprimirListaPDF('agenda', agenda(), ['Data/Hora', 'Tipo', 'Local'])" class="btn-secondary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Imprimir PDF
+                  </button>
+                  <button (click)="abrirModal('agenda')" class="btn-primary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    Agendar Evento
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tabela da Agenda -->
+              <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                <table class="w-full">
+                  <thead class="bg-gray-100 border-b-2 border-gray-200">
+                    <tr>
+                      <th class="th-pad">Data e Hora</th>
+                      <th class="th-pad">Tipo</th>
+                      <th class="th-pad">Local</th>
+                      <th class="th-pad">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    @for (item of agenda(); track item.id) {
+                      <tr>
+                        <td class="td-pad font-medium text-gray-900">{{ formatarDataHora(item.dataHora) }}</td>
+                        <td class="td-pad">{{ item.tipo }}</td>
+                        <td class="td-pad">{{ item.local }}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button (click)="abrirModalAta(item)" class="btn-icon-secondary" title="Ver/Editar ATA da Reunião">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          </button>
+                          <button (click)="abrirModal('agenda', item)" class="btn-icon-secondary" title="Editar Evento">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                          <button (click)="excluirItem('agenda', item.id)" class="btn-icon-danger" title="Excluir Evento">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="p-6 text-center text-gray-500">Nenhum evento agendado.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        }
+      </div> <!-- Fecha o div.relative.z-10 -->
+      </main>
+
+      <!-- Rodapé -->
+      <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
+          &copy; {{ anoAtual }} - Gestão da Associação de Bairro. Todos os direitos reservados. By: An.Yoshi
+        </div>
+      </footer>
+    </div>
+
+    <!-- Modal Principal (Cadastro/Edição) -->
+    @if (showModal()) {
+      <div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000] p-4">
+        <div class="bg-pink-50 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <!-- Modal Header -->
+          <div class="flex justify-between items-center p-4 border-b border-pink-200">
+            <h3 class="text-xl font-semibold text-gray-900">{{ modalTitulo() }}</h3>
+            <button (click)="fecharModal()" class="text-gray-400 hover:text-gray-700">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          <!-- Modal Body (Formulários) -->
+          <div class="p-6 space-y-4 overflow-y-auto">
+            @switch (paginaAtual()) {
+              
+              <!-- FORM: CAIXA -->
+              @case ('caixa') {
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Tipo de Lançamento</label>
+                    <select class="form-input" [value]="formState().tipo || 'entrada'" (input)="onFormInput('tipo', $event.target.value)">
+                      <option value="entrada">Entrada</option>
+                      <option value="saida">Saída</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="form-label">Data</label>
+                    <input type="date" class="form-input" [value]="formState().data || ''" (input)="onFormInput('data', $event.target.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">Valor (R$)</label>
+                  <input type="number" step="0.01" placeholder="100.50" class="form-input" [value]="formState().valor || ''" (input)="onFormInput('valor', $event.target.valueAsNumber)">
+                </div>
+                <div>
+                  <label class="form-label">Descrição</label>
+                  <input type="text" placeholder="Descrição do lançamento" class="form-input" [value]="formState().descricao || ''" (input)="onFormInput('descricao', $event.target.value)">
+                </div>
+                @if (formState().tipo === 'entrada') {
+                  <div>
+                    <label class="form-label">Doador (Opcional)</label>
+                    <input type="text" placeholder="Nome de quem fez a doação" class="form-input" [value]="formState().pessoa || ''" (input)="onFormInput('pessoa', $event.target.value)">
+                  </div>
+                }
+                @if (formState().tipo === 'saida') {
+                  <div>
+                    <label class="form-label">Destino (Opcional)</label>
+                    <input type="text" placeholder="Para onde o dinheiro foi destinado" class="form-input" [value]="formState().destino || ''" (input)="onFormInput('destino', $event.target.value)">
+                  </div>
+                }
+              }
+
+              <!-- FORM: ASSOCIADOS / COLABORADORES -->
+              @case ('associados') {
+                <div>
+                  <label class="form-label">Nome Completo</label>
+                  <input type="text" class="form-input" [value]="formState().nome || ''" (input)="onFormInput('nome', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Endereço</label>
+                  <input type="text" class="form-input" [value]="formState().endereco || ''" (input)="onFormInput('endereco', $event.target.value)">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Telefone</label>
+                    <input type="tel" class="form-input" [value]="formState().telefone || ''" (input)="onFormInput('telefone', $event.target.value)">
+                  </div>
+                  <div>
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-input" [value]="formState().email || ''" (input)="onFormInput('email', $event.target.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">Cargo / Função</label>
+                  <input type="text" class="form-input" [value]="formState().cargo || ''" (input)="onFormInput('cargo', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Observação</label>
+                  <textarea rows="3" class="form-input" [value]="formState().obs || ''" (input)="onFormInput('obs', $event.target.value)"></textarea>
+                </div>
+              }
+              @case('colaboradores') {
+                <div>
+                  <label class="form-label">Nome Completo</label>
+                  <input type="text" class="form-input" [value]="formState().nome || ''" (input)="onFormInput('nome', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Endereço</label>
+                  <input type="text" class="form-input" [value]="formState().endereco || ''" (input)="onFormInput('endereco', $event.target.value)">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Telefone</label>
+                    <input type="tel" class="form-input" [value]="formState().telefone || ''" (input)="onFormInput('telefone', $event.target.value)">
+                  </div>
+                  <div>
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-input" [value]="formState().email || ''" (input)="onFormInput('email', $event.target.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">Cargo / Função</label>
+                  <input type="text" class="form-input" [value]="formState().cargo || ''" (input)="onFormInput('cargo', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Observação</label>
+                  <textarea rows="3" class="form-input" [value]="formState().obs || ''" (input)="onFormInput('obs', $event.target.value)"></textarea>
+                </div>
+              }
+
+              <!-- FORM: UTILIDADES -->
+              @case ('utilidades') {
+                <div>
+                  <label class="form-label">Nome do Estabelecimento</label>
+                  <input type="text" class="form-input" [value]="formState().nome || ''" (input)="onFormInput('nome', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Endereço</label>
+                  <input type="text" class="form-input" [value]="formState().endereco || ''" (input)="onFormInput('endereco', $event.target.value)">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Telefone</label>
+                    <input type="tel" class="form-input" [value]="formState().telefone || ''" (input)="onFormInput('telefone', $event.target.value)">
+                  </div>
+                  <div>
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-input" [value]="formState().email || ''" (input)="onFormInput('email', $event.target.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">Descrição (Horários, etc.)</label>
+                  <textarea rows="3" class="form-input" [value]="formState().descricao || ''" (input)="onFormInput('descricao', $event.target.value)"></textarea>
+                </div>
+              }
+
+              <!-- FORM: SAC -->
+              @case ('sac') {
+                <div>
+                  <label class="form-label">Tipo de Registro</label>
+                  <select class="form-input" [value]="formState().tipo || 'reclamacao'" (input)="onFormInput('tipo', $event.target.value)">
+                    <option value="reclamacao">Reclamação</option>
+                    <option value="sugestao">Sugestão</option>
+                    <option value="denuncia">Denúncia</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label">Nome do Reclamante</label>
+                  <input type="text" class="form-input" [value]="formState().nome || ''" (input)="onFormInput('nome', $event.target.value)">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Telefone</label>
+                    <input type="tel" class="form-input" [value]="formState().telefone || ''" (input)="onFormInput('telefone', $event.target.value)">
+                  </div>
+                  <div>
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-input" [value]="formState().email || ''" (input)="onFormInput('email', $event.target.value)">
+                  </div>
+                </div>
+                 <div>
+                  <label class="form-label">Endereço (do reclamante ou da ocorrência)</label>
+                  <input type="text" class="form-input" [value]="formState().endereco || ''" (input)="onFormInput('endereco', $event.target.value)">
+                </div>
+                <div>
+                  <label class="form-label">Texto (Reclamação, Sugestão ou Denúncia)</label>
+                  <textarea rows="4" class="form-input" [value]="formState().texto || ''" (input)="onFormInput('texto', $event.target.value)"></textarea>
+                </div>
+              }
+
+              <!-- FORM: AGENDA -->
+              @case ('agenda') {
+                 <div>
+                  <label class="form-label">Tipo de Evento</label>
+                  <input type="text" placeholder="Ex: Reunião, Assembleia, Festa" class="form-input" [value]="formState().tipo || ''" (input)="onFormInput('tipo', $event.target.value)">
+                </div>
+                 <div>
+                  <label class="form-label">Local</label>
+                  <input type="text" placeholder="Ex: Sede da Associação" class="form-input" [value]="formState().local || ''" (input)="onFormInput('local', $event.target.value)">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Data e Hora</label>
+                    <input type="datetime-local" class="form-input" [value]="formState().dataHora || ''" (input)="onFormInput('dataHora', $event.target.value)">
+                  </div>
+                  <div>
+                    <label class="form-label">Telefone para Contato</label>
+                    <input type="tel" class="form-input" [value]="formState().telefone || ''" (input)="onFormInput('telefone', $event.target.value)">
+                  </div>
+                </div>
+              }
+            }
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="flex justify-end items-center p-4 border-t bg-gray-50 border-gray-200 rounded-b-lg">
+            <button (click)="fecharModal()" type="button" class="btn-secondary mr-3">Cancelar</button>
+            <button (click)="salvarItem(paginaAtual())" type="button" class="btn-primary">
+              {{ editId() ? 'Salvar Alterações' : 'Salvar Novo' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal: ATA da Reunião (Agenda) -->
+    @if (showAtaModal()) {
+      <div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[3000] p-4">
+        <div class="bg-pink-50 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+          <!-- Modal Header -->
+          <div class="flex justify-between items-center p-4 border-b border-pink-200">
+            <h3 class="text-xl font-semibold text-gray-900">ATA / Resumo do Evento</h3>
+            <button (click)="fecharModalAta()" class="text-gray-400 hover:text-gray-700">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <!-- Modal Body -->
+          <div class="p-6 space-y-4 flex-grow overflow-y-auto">
+            <h4 class="text-lg font-medium text-gray-800">Evento: {{ formState().tipo }}</h4>
+            <p class="text-sm text-gray-600">Local: {{ formState().local }} | Data: {{ formatarDataHora(formState().dataHora) }}</p>
+            <div>
+              <label class="form-label">Digite aqui o que aconteceu no evento (ATA):</label>
+              <textarea rows="15" class="form-input" 
+                        [value]="formState().ata || ''" 
+                        (input)="onFormInput('ata', $event.target.value)"></textarea>
+            </div>
+          </div>
+          <!-- Modal Footer -->
+          <div class="flex justify-end items-center p-4 border-t bg-gray-50 border-gray-200 rounded-b-lg">
+            <button (click)="fecharModalAta()" type="button" class="btn-secondary mr-3">Cancelar</button>
+            <button (click)="salvarAta()" type="button" class="btn-primary">
+              Salvar ATA
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  `,
+  styles: [`
+    :host {
+      --cor-primaria: #2563EB; /* blue-600 */
+      --cor-primaria-hover: #1D4ED8; /* blue-700 */
+      --cor-secundaria: #E5E7EB; /* gray-200 */
+      --cor-secundaria-hover: #D1D5DB; /* gray-300 */
+      --cor-danger: #DC2626; /* red-600 */
+      --cor-danger-hover: #B91C1C; /* red-700 */
+      --cor-green: #16A34A; /* green-600 */
+      --cor-yellow: #CA8A04; /* yellow-600 */
+      --cor-red: #DC2626; /* red-600 */
+    }
+
+    .font-inter {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    .link-base {
+      @apply inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all;
+    }
+    .link-active {
+      @apply border-blue-500 text-blue-600;
+    }
+    .link-inactive {
+      @apply border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900;
+    }
+
+    .link-mobile-base {
+      @apply block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-all;
+    }
+    .link-mobile-active {
+      @apply bg-blue-50 border-blue-500 text-blue-600;
+    }
+    .link-mobile-inactive {
+      @apply border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900;
+    }
+    
+    .btn {
+      @apply font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+    .btn-primary {
+      @apply btn bg-[var(--cor-primaria)] text-white hover:bg-[var(--cor-primaria-hover)] focus:ring-[var(--cor-primaria)];
+    }
+    .btn-green {
+      @apply btn bg-[var(--cor-green)] text-white hover:bg-green-700 focus:ring-[var(--cor-green)];
+    }
+    .btn-secondary {
+      @apply btn bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400;
+    }
+    .btn-danger {
+      @apply btn bg-[var(--cor-danger)] text-white hover:bg-[var(--cor-danger-hover)] focus:ring-[var(--cor-danger)];
+    }
+    
+    .btn-icon {
+      @apply p-2 rounded-full transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+    .btn-icon-secondary {
+      @apply btn-icon text-gray-500 hover:bg-gray-200 hover:text-gray-800 focus:ring-gray-400;
+    }
+    .btn-icon-danger {
+      @apply btn-icon text-red-500 hover:bg-red-100 hover:text-red-700 focus:ring-red-400;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      @apply w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all bg-white text-gray-900 placeholder-gray-400 hover:bg-white focus:border-blue-500;
+    }
+    .form-label {
+      @apply block text-sm font-medium text-gray-700 mb-1;
+    }
+
+    .th-pad {
+      @apply px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider;
+    }
+    .td-pad {
+      @apply px-4 sm:px-6 py-4 text-sm text-gray-700;
+    }
+
+    .badge-green {
+      @apply px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800;
+    }
+    .badge-red {
+      @apply px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800;
+    }
+    
+    .status-select {
+      @apply font-bold border-2 rounded-lg py-1 px-2;
+    }
+    .status-green {
+      @apply bg-green-100 border-green-300 text-green-800;
+    }
+    .status-yellow {
+      @apply bg-yellow-100 border-yellow-300 text-yellow-800;
+    }
+    .status-red {
+      @apply bg-red-100 border-red-300 text-red-800;
+    }
+  `]
+})
+export class App implements OnInit, OnDestroy {
+  // --- URLs de Imagem (LOGO E MARCA D'ÁGUA) ---
+  // IMPORTANTE: Cole as URLs das suas imagens aqui!
+  logoUrl = signal<string>(''); // Ex: 'https://i.imgur.com/seu-logo.png'
+  watermarkUrl = signal<string>(''); // Ex: 'https://i.imgur.com/sua-marca.png'
+
+  // --- Configuração do Firebase ---
+  app: FirebaseApp | null = null;
+  db: WritableSignal<Firestore | null> = signal(null);
+  auth: WritableSignal<Auth | null> = signal(null);
+  userId = signal<string | null>(null);
+  appId = signal<string>('default-app-id');
+  
+  // Array de listeners do onSnapshot para limpeza
+  private unsubscribers: (() => void)[] = [];
+
+  // --- Estado da UI ---
+  paginaAtual = signal<string>('inicio');
+  isLoading = signal<boolean>(true);
+  menuAberto = signal<boolean>(false);
+  anoAtual = new Date().getFullYear();
+
+  // --- Estado dos Dados ---
+  associados: WritableSignal<Associado[]> = signal([]);
+  colaboradores: WritableSignal<any[]> = signal([]); // Usando 'any' para flexibilidade no form
+  utilidades: WritableSignal<Utilidade[]> = signal([]);
+  sac: WritableSignal<SAC[]> = signal([]);
+  agenda: WritableSignal<Agenda[]> = signal([]);
+  caixa: WritableSignal<Caixa[]> = signal([]);
+
+  // --- Estado de Modais e Formulários ---
+  showModal = signal<boolean>(false);
+  showAtaModal = signal<boolean>(false);
+  editId = signal<string | null>(null);
+  formState: WritableSignal<any> = signal({}); // Formulário genérico
+  modalTitulo = computed(() => {
+    const pag = this.paginaAtual();
+    const prefix = this.editId() ? 'Editar' : 'Novo';
+    
+    switch (pag) {
+      case 'caixa': return `${prefix} Lançamento`;
+      case 'associados': return `${prefix} Associado`;
+      case 'colaboradores': return `${prefix} Colaborador`;
+      case 'utilidades': return `${prefix} Local de Utilidade`;
+      case 'sac': return `${prefix} Registro SAC`;
+      case 'agenda': return `${prefix} Evento`;
+      default: return 'Formulário';
+    }
+  });
+
+  // --- Estado de Filtros ---
+  filtroTermo = signal<string>('');
+
+  // --- Computed Signals (Dados Derivados) ---
+  
+  // Caixa
+  totalEntradas = computed(() => 
+    this.caixa()
+      .filter(c => c.tipo === 'entrada')
+      .reduce((acc, c) => acc + (Number(c.valor) || 0), 0)
+  );
+  totalSaidas = computed(() => 
+    this.caixa()
+      .filter(c => c.tipo === 'saida')
+      .reduce((acc, c) => acc + (Number(c.valor) || 0), 0)
+  );
+  saldoCaixa = computed(() => this.totalEntradas() - this.totalSaidas());
+  
+  // SAC
+  sacPendentes = computed(() => 
+    this.sac().filter(s => s.status === 'analise' || s.status === 'nao_resolvido').length
+  );
+  
+  // Filtros de Listas
+  private filtrarLista(lista: any[], termo: string): any[] {
+    if (!termo) return lista;
+    const t = termo.toLowerCase();
+    return lista.filter(item => 
+      Object.values(item).some(val => 
+        String(val).toLowerCase().includes(t)
+      )
+    );
+  }
+  
+  associadosFiltrados = computed(() => this.filtrarLista(this.associados(), this.filtroTermo()));
+  colaboradoresFiltrados = computed(() => this.filtrarLista(this.colaboradores(), this.filtroTermo()));
+  sacFiltrados = computed(() => this.filtrarLista(this.sac(), this.filtroTermo()));
+
+
+  constructor() {
+    // Inicialização do Firebase
+    try {
+      const firebaseConfig = JSON.parse(__firebase_config);
+      this.app = initializeApp(firebaseConfig);
+      this.auth.set(getAuth(this.app));
+      this.db.set(getFirestore(this.app));
+      this.appId.set(typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+      setLogLevel('debug'); // Logs do Firestore
+    } catch (e) {
+      console.error("Erro ao inicializar o Firebase:", e);
+      this.isLoading.set(false);
+    }
+  }
+
+  async ngOnInit() { // Tornar ngOnInit async
+    this.isLoading.set(true); // 1. Garantir que o loading está ativo
+    
+    const auth = this.auth();
+    if (!auth) {
+      console.error("Auth object is null. Firebase failed to initialize.");
+      this.isLoading.set(false); // 2. Fail-safe se o construtor falhou
+      return;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      let uid: string;
+      if (user) {
+        uid = user.uid;
+      } else {
+        // Tenta logar com token customizado ou anônimo
+        try {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+            uid = userCredential.user.uid;
+          } else {
+            const userCredential = await signInAnonymously(auth);
+            uid = userCredential.user.uid;
+          }
+        } catch (error) {
+          console.error("Erro no login (anônimo ou custom):", error);
+          this.isLoading.set(false); // 3. Desativa o loading em caso de ERRO de auth
+          return;
+        }
+      }
+      
+      this.userId.set(uid);
+      console.log("Usuário autenticado. ID:", uid);
+
+      // 4. Auth OK. AGORA carregar scripts PDF (não bloqueia o app se falhar)
+      try {
+        await this.loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+        await this.loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+        console.log("Bibliotecas PDF carregadas com sucesso.");
+      } catch (e) {
+        console.error("Erro ao carregar bibliotecas PDF. Funções de impressão podem não funcionar.", e);
+        // Não trava o app, apenas registra o erro.
+      }
+      
+      // 5. Carregar dados do banco
+      this.carregarTodosOsDados();
+      
+      // 6. Desativa o loading APÓS auth e início do carregamento de dados
+      this.isLoading.set(false);
+    });
+  }
+
+  ngOnDestroy() {
+    // Limpa todos os listeners do onSnapshot ao destruir o componente
+    this.unsubscribers.forEach(unsub => unsub());
+  }
+
+  // --- Nova função para carregar scripts ---
+  private loadScript(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = (e) => reject(e);
+      document.body.appendChild(script);
+    });
+  }
+
+  // --- Lógica de Carregamento (Firebase onSnapshot) ---
+
+  carregarTodosOsDados() {
+    const uid = this.userId();
+    const db = this.db();
+    if (!uid || !db) return;
+
+    const colecoes = [
+      { nome: 'associados', signal: this.associados },
+      { nome: 'colaboradores', signal: this.colaboradores },
+      { nome: 'utilidades', signal: this.utilidades },
+      { nome: 'sac', signal: this.sac },
+      { nome: 'agenda', signal: this.agenda },
+      { nome: 'caixa', signal: this.caixa },
+    ];
+
+    // Limpa listeners antigos
+    this.unsubscribers.forEach(unsub => unsub());
+    this.unsubscribers = [];
+
+    for (const col of colecoes) {
+      this.setupListener(col.nome, col.signal);
+    }
+  }
+
+  setupListener(nomeColecao: string, signal: WritableSignal<any[]>) {
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    if (!db || !uid) return;
+
+    const colPath = `artifacts/${aid}/users/${uid}/${nomeColecao}`;
+    const q = query(collection(db, colPath));
+
+    const unsubscribe = onSnapshot(q, 
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const lista: any[] = [];
+        snapshot.forEach((doc) => {
+          lista.push({ id: doc.id, ...doc.data() });
+        });
+        // Ordena caixa por data (mais recente primeiro)
+        if (nomeColecao === 'caixa' || nomeColecao === 'agenda') {
+          lista.sort((a, b) => new Date(b.data || b.dataHora).getTime() - new Date(a.data || a.dataHora).getTime());
+        }
+        signal.set(lista);
+      },
+      (error) => {
+        console.error(`Erro ao carregar ${nomeColecao}: `, error);
+      }
+    );
+    this.unsubscribers.push(unsubscribe); // Guarda o unsubscriber
+  }
+
+  // --- Lógica de Navegação e UI ---
+  
+  mudarPagina(pagina: string) {
+    this.paginaAtual.set(pagina);
+    this.menuAberto.set(false); // Fecha o menu mobile ao navegar
+    this.filtroTermo.set(''); // Reseta o filtro
+  }
+
+  toggleMenuMobile() {
+    this.menuAberto.update(aberto => !aberto);
+  }
+
+  linkClasses(pagina: string): string {
+    const base = 'link-base';
+    return `${base} ${this.paginaAtual() === pagina ? 'link-active' : 'link-inactive'}`;
+  }
+  
+  linkClassesMobile(pagina: string): string {
+    const base = 'link-mobile-base';
+    return `${base} ${this.paginaAtual() === pagina ? 'link-mobile-active' : 'link-inactive'}`;
+  }
+
+  getStatusClass(status: string): string {
+    if (status === 'resolvido') return 'status-green';
+    if (status === 'analise') return 'status-yellow';
+    if (status === 'nao_resolvido') return 'status-red';
+    return '';
+  }
+
+  // --- Lógica de Formulário e Modal ---
+
+  abrirModal(tipo: string, item: any = null, subTipo: string | null = null) {
+    this.paginaAtual.set(tipo); // Garante que o modal correto abrirá
+    if (item) {
+      // Editando
+      this.editId.set(item.id);
+      // Converte data de 'datetime-local' para o formato do input 'date' (se aplicável)
+      const formData = { ...item };
+      if (tipo === 'caixa' && formData.data) {
+         formData.data = formData.data.split('T')[0];
+      }
+      if (tipo === 'agenda' && formData.dataHora) {
+         formData.dataHora = formData.dataHora.substring(0, 16); // Formato yyyy-MM-ddTHH:mm
+      }
+      this.formState.set(formData);
+    } else {
+      // Criando
+      this.editId.set(null);
+      // Valores padrão
+      if(tipo === 'caixa') this.formState.set({ tipo: subTipo || 'entrada', data: new Date().toISOString().split('T')[0] });
+      else if(tipo === 'sac') this.formState.set({ tipo: 'reclamacao', status: 'analise' });
+      else this.formState.set({});
+    }
+    this.showModal.set(true);
+  }
+
+  fecharModal() {
+    this.showModal.set(false);
+    this.editId.set(null);
+    this.formState.set({});
+  }
+
+  abrirModalAta(item: Agenda) {
+    this.editId.set(item.id);
+    this.formState.set({ ...item });
+    this.showAtaModal.set(true);
+  }
+
+  fecharModalAta() {
+    this.showAtaModal.set(false);
+    this.editId.set(null);
+    this.formState.set({});
+  }
+
+  onFormInput(campo: string, valor: any) {
+    this.formState.update(atual => ({ ...atual, [campo]: valor }));
+  }
+
+  // --- Lógica CRUD (Salvar, Editar, Excluir) ---
+  
+  async salvarItem(tipo: string) {
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    if (!db || !uid) return;
+
+    this.isLoading.set(true);
+    const colPath = `artifacts/${aid}/users/${uid}/${tipo}`;
+    const id = this.editId();
+    let data = this.formState();
+
+    // Limpa dados (remove o ID do objeto a ser salvo)
+    const { id: docId, ...dataToSave } = data;
+
+    try {
+      if (id) {
+        // Editar
+        const docRef = doc(db, colPath, id);
+        await setDoc(docRef, dataToSave);
+      } else {
+        // Criar
+        await addDoc(collection(db, colPath), dataToSave);
+      }
+      this.fecharModal();
+    } catch (e) {
+      console.error("Erro ao salvar item:", e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+  
+  async salvarAta() {
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    const id = this.editId();
+    if (!db || !uid || !id) return;
+
+    this.isLoading.set(true);
+    const colPath = `artifacts/${aid}/users/${uid}/agenda`;
+    const docRef = doc(db, colPath, id);
+    const ataTexto = this.formState().ata || '';
+
+    try {
+      await updateDoc(docRef, { ata: ataTexto });
+      this.fecharModalAta();
+    } catch (e) {
+      console.error("Erro ao salvar ATA:", e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  async excluirItem(tipo: string, id: string) {
+    // Usar um modal de confirmação customizado em vez de window.confirm
+    // Por simplicidade, vamos excluir direto. Numa app real, adicionar um modal de confirmação.
+    
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    if (!db || !uid) return;
+
+    this.isLoading.set(true);
+    const colPath = `artifacts/${aid}/users/${uid}/${tipo}`;
+    
+    try {
+      await deleteDoc(doc(db, colPath, id));
+    } catch (e) {
+      console.error("Erro ao excluir item:", e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  async mudarStatusSAC(id: string, status: string) {
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    if (!db || !uid) return;
+
+    const colPath = `artifacts/${aid}/users/${uid}/sac`;
+    const docRef = doc(db, colPath, id);
+    
+    try {
+      await updateDoc(docRef, { status: status });
+    } catch (e) {
+      console.error("Erro ao mudar status do SAC:", e);
+    }
+  }
+
+  // --- Lógica de Backup e Restauração ---
+
+  async fazerBackup() {
+    this.isLoading.set(true);
+    const db = this.db();
+    const uid = this.userId();
+    const aid = this.appId();
+    if (!db || !uid) {
+      this.isLoading.set(false);
+      return;
+    }
+
+    const colecoes = ['associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'caixa'];
+    const backupData: { [key: string]: any[] } = {};
+
+    try {
+      for (const colNome of colecoes) {
+        const colPath = `artifacts/${aid}/users/${uid}/${colNome}`;
+        const snapshot = await getDocs(collection(db, colPath));
+        backupData[colNome] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
+
+      // Criar e baixar o arquivo JSON
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_associacao_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+    } catch (e) {
+      console.error("Erro ao gerar backup:", e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  restaurarBackup(event: any) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const backupData = JSON.parse(e.target?.result as string);
+        
+        const db = this.db();
+        const uid = this.userId();
+        const aid = this.appId();
+        if (!db || !uid) throw new Error("Banco de dados não conectado.");
+
+        // Adicionar confirmação customizada aqui
+        
+        this.isLoading.set(true);
+
+        for (const colNome of Object.keys(backupData)) {
+          const colPath = `artifacts/${aid}/users/${uid}/${colNome}`;
+          const items = backupData[colNome] as any[];
+          
+          // Deleta dados antigos (opcional, mas recomendado para restore limpo)
+          // ... (lógica de deleção em lote) ...
+          
+          // Adiciona novos dados
+          for (const item of items) {
+            const { id, ...data } = item;
+            // Usa setDoc com o ID original para manter a integridade
+            await setDoc(doc(db, colPath, id), data);
+          }
+        }
+        // Os listeners onSnapshot atualizarão a UI automaticamente.
+        
+      } catch (err) {
+        console.error("Erro ao restaurar backup:", err);
+      } finally {
+        this.isLoading.set(false);
+        // Limpa o input de arquivo
+        event.target.value = null;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // --- Lógica de Impressão (PDF) ---
+
+  imprimirListaPDF(titulo: string, dados: any[], colunas: string[]) {
+    const doc = new jspdf.jsPDF(); // Alterado para usar a global
+    
+    // Capitaliza o título
+    titulo = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+    
+    doc.text(`Relatório de ${titulo}`, 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 22);
+
+    // Mapeia os dados para o formato do autoTable
+    const body = dados.map(item => colunas.map(col => item[col.toLowerCase()] || ''));
+
+    (doc as any).autoTable({ // Alterado para usar o plugin anexado
+      head: [colunas],
+      body: body,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235] }, // Azul
+    });
+
+    doc.save(`relatorio_${titulo.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
+  }
+
+  gerarRelatorioCaixaPDF() {
+    const doc = new jspdf.jsPDF(); // Alterado para usar a global
+    const dados = this.caixa();
+    
+    doc.text("Relatório de Caixa", 14, 16);
+    doc.setFontSize(12);
+    doc.text(`Saldo Atual: ${this.formatarMoeda(this.saldoCaixa())}`, 14, 24);
+    doc.setFontSize(10);
+    doc.text(`Total Entradas: ${this.formatarMoeda(this.totalEntradas())}`, 14, 30);
+    doc.text(`Total Saídas: ${this.formatarMoeda(this.totalSaidas())}`, 14, 36);
+
+    const body = dados.map(item => [
+      this.formatarData(item.data),
+      item.tipo,
+      item.descricao,
+      item.tipo === 'entrada' ? item.pessoa : item.destino,
+      this.formatarMoeda(item.valor)
+    ]);
+
+    (doc as any).autoTable({ // Alterado para usar o plugin anexado
+      head: [['Data', 'Tipo', 'Descrição', 'Doador/Destino', 'Valor']],
+      body: body,
+      startY: 42,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235] },
+      columnStyles: {
+        4: { halign: 'right' }
+      }
+    });
+
+    doc.save(`relatorio_caixa_${new Date().toISOString().split('T')[0]}.pdf`);
+  }
+
+  imprimirSacPDF(item: SAC) {
+    const doc = new jspdf.jsPDF(); // Alterado para usar a global
+
+    doc.setFontSize(16);
+    doc.text(`Registro SAC - ID: ${item.id.substring(0, 6)}...`, 14, 16);
+
+    doc.setFontSize(12);
+    doc.text(`Status: ${item.status.toUpperCase()}`, 14, 26);
+    doc.text(`Tipo: ${item.tipo.toUpperCase()}`, 14, 32);
+    
+    (doc as any).autoTable({ // Alterado para usar o plugin anexado
+      startY: 40,
+      head: [['Campo', 'Informação']],
+      body: [
+        ['Reclamante', item.nome],
+        ['Telefone', item.telefone],
+        ['Email', item.email],
+        ['Endereço', item.endereco],
+      ],
+      theme: 'striped'
+    });
+    
+    const startY = (doc as any).lastAutoTable.finalY + 10;
+    doc.text('Descrição do Registro:', 14, startY);
+    const textoQuebrado = doc.splitTextToSize(item.texto, 180);
+    doc.text(textoQuebrado, 14, startY + 6);
+
+    doc.save(`sac_${item.id.substring(0, 6)}.pdf`);
+  }
+  
+  imprimirComprovante(item: Caixa) {
+    const doc = new jspdf.jsPDF(); // Alterado para usar a global
+    
+    doc.setFontSize(18);
+    doc.text(`Comprovante de ${item.tipo === 'entrada' ? 'Recebimento' : 'Pagamento'}`, 105, 16, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text(`Data: ${this.formatarData(item.data)}`, 14, 30);
+    doc.text(`Valor: ${this.formatarMoeda(item.valor)}`, 14, 38);
+    
+    doc.text(`Descrição: ${item.descricao}`, 14, 46);
+
+    if (item.tipo === 'entrada' && item.pessoa) {
+      doc.text(`Recebido de: ${item.pessoa}`, 14, 54);
+    }
+    if (item.tipo === 'saida' && item.destino) {
+      doc.text(`Pago para: ${item.destino}`, 14, 54);
+    }
+    
+    doc.text(`ID da Transação: ${item.id}`, 14, 70);
+
+    doc.text('_________________________', 105, 90, { align: 'center' });
+    doc.text('Assinatura Responsável', 105, 96, { align: 'center' });
+
+    doc.save(`comprovante_${item.id.substring(0, 6)}.pdf`);
+  }
+
+  // --- Handlers de Erro de Imagem ---
+  onLogoError() {
+    console.warn("URL da logo é inválida ou não pôde ser carregada. Escondendo a imagem.");
+    this.logoUrl.set(''); // Esconde a imagem se a URL falhar
+  }
+
+  onWatermarkError() {
+    console.warn("URL da marca d'água é inválida ou não pôde ser carregada. Escondendo a imagem.");
+    this.watermarkUrl.set(''); // Esconde a imagem se a URL falhar
+  }
+
+  // --- Funções Utilitárias ---
+  formatarMoeda(valor: number): string {
+    return (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  formatarData(dataString: string): string {
+    if (!dataString) return 'N/A';
+    try {
+      // Assume que a data pode ser 'yyyy-MM-dd' ou ISO
+      const data = new Date(dataString);
+      // Adiciona o fuso horário para corrigir o dia
+      const offset = data.getTimezoneOffset();
+      const dataCorrigida = new Date(data.getTime() + offset * 60000);
+      return dataCorrigida.toLocaleDateString('pt-BR');
+    } catch (e) {
+      return dataString;
+    }
+  }
+  
+  formatarDataHora(dataHoraString: string): string {
+    if (!dataHoraString) return 'N/A';
+    try {
+      const data = new Date(dataHoraString);
+      return data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) {
+      return dataHoraString;
+    }
+  }
+}
+
+

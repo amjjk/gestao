@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Associação de Bairro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados baseados no tema anterior */
+        :root {
+            --cor-fundo-app: #eff6ff; /* blue-50 */
+            --cor-fundo-modal: #fdf2f8; /* pink-50 */
+            --cor-borda-modal: #fbcfe8; /* pink-200 */
+            --cor-texto-primario: #111827; /* gray-900 */
+            --cor-texto-secundario: #374151; /* gray-700 */
+            --cor-texto-label: #374151; /* gray-700 */
+            --cor-fundo-input: #ffffff; /* white */
+            --cor-borda-input: #d1d5db; /* gray-300 */
+            --cor-placeholder-input: #9ca3af; /* gray-400 */
+            --cor-fundo-tabela-header: #f3f4f6; /* gray-100 */
+            --cor-borda-tabela-header: #e5e7eb; /* gray-200 */
+            --cor-fundo-hover: #f3f4f6; /* gray-100 */
+            --cor-fundo-modal-footer: #f9fafb; /* gray-50 */
+            --cor-link-ativo: #2563eb; /* blue-600 */
+            --cor-link-borda-ativa: #3b82f6; /* blue-500 */
+            --cor-link-inativo: #6b7280; /* gray-500 */
+            --cor-link-borda-inativo-hover: #d1d5db; /* gray-300 */
+            --cor-link-inativo-hover: #111827; /* gray-900 */
+            --cor-primary: #2563eb; /* blue-600 */
+            --cor-primary-hover: #1d4ed8; /* blue-700 */
+            --cor-green: #16a34a; /* green-600 */
+            --cor-red: #dc2626; /* red-600 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--cor-fundo-app);
+            color: var(--cor-texto-primario);
+        }
+
+        .link-base {
+            display: inline-flex;
+            align-items: center;
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+            border-bottom-width: 2px;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            font-weight: 500;
+            transition: all 0.15s ease-in-out;
+            cursor: pointer;
+        }
+        .link-active {
+            border-color: var(--cor-link-borda-ativa);
+            color: var(--cor-link-ativo);
+        }
+        .link-inactive {
+            border-color: transparent;
+            color: var(--cor-link-inativo);
+        }
+        .link-inactive:hover {
+            border-color: var(--cor-link-borda-inativo-hover);
+            color: var(--cor-link-inativo-hover);
+        }
+
+        .link-mobile-base {
+             display: block;
+             padding-left: 0.75rem;
+             padding-right: 1rem;
+             padding-top: 0.5rem;
+             padding-bottom: 0.5rem;
+             border-left-width: 4px;
+             font-size: 1rem;
+             line-height: 1.5rem;
+             font-weight: 500;
+             transition: all 0.15s ease-in-out;
+             cursor: pointer;
+        }
+        .link-mobile-active {
+            background-color: var(--cor-fundo-app);
+            border-color: var(--cor-link-borda-ativa);
+            color: var(--cor-link-ativo);
+        }
+        .link-mobile-inactive {
+            border-color: transparent;
+            color: var(--cor-link-inativo);
+        }
+         .link-mobile-inactive:hover {
+            background-color: var(--cor-fundo-hover);
+            color: var(--cor-link-inativo-hover);
+        }
+
+        .btn {
+            padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem;
+            font-size: 0.875rem; line-height: 1.25rem; font-weight: 500;
+            border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            outline: none; transition: all 0.15s ease-in-out;
+            border: none; /* Add this line to remove default button borders */
+            cursor: pointer; /* Ensure cursor changes on hover */
+        }
+         .btn:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px var(--ring-color, transparent); } /* Ring effect */
+         .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .btn-primary { background-color: var(--cor-primary); color: white; --ring-color: var(--cor-primary); }
+        .btn-primary:hover:not(:disabled) { background-color: var(--cor-primary-hover); }
+
+        .btn-green { background-color: var(--cor-green); color: white; --ring-color: var(--cor-green); }
+        .btn-green:hover:not(:disabled) { background-color: #15803d; /* green-700 */ }
+
+        .btn-secondary { background-color: #e5e7eb; /* gray-200 */ color: #374151; /* gray-700 */ --ring-color: #9ca3af; /* gray-400 */ }
+        .btn-secondary:hover:not(:disabled) { background-color: #d1d5db; /* gray-300 */ }
+
+        .btn-danger { background-color: var(--cor-red); color: white; --ring-color: var(--cor-red); }
+        .btn-danger:hover:not(:disabled) { background-color: #b91c1c; /* red-700 */ }
+
+        .btn-icon {
+            padding: 0.5rem; border-radius: 9999px; transition: all 0.15s ease-in-out; outline: none;
+            border: none; /* Add this line */
+            cursor: pointer; /* Ensure cursor changes on hover */
+        }
+        .btn-icon:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px var(--ring-color, transparent); }
+        .btn-icon:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .btn-icon-secondary { color: #6b7280; /* gray-500 */ --ring-color: #9ca3af; /* gray-400 */ }
+        .btn-icon-secondary:hover:not(:disabled) { background-color: #e5e7eb; /* gray-200 */ color: #1f2937; /* gray-800 */ }
+
+        .btn-icon-danger { color: #ef4444; /* red-500 */ --ring-color: #f87171; /* red-400 */ }
+        .btn-icon-danger:hover:not(:disabled) { background-color: #fee2e2; /* red-100 */ color: #b91c1c; /* red-700 */ }
+
+        .form-input, .form-select, .form-textarea {
+             width: 100%; padding: 0.5rem; border: 1px solid var(--cor-borda-input); border-radius: 0.5rem;
+             outline: none; transition: all 0.15s ease-in-out;
+             background-color: var(--cor-fundo-input); color: var(--cor-texto-primario);
+        }
+        .form-input::placeholder, .form-textarea::placeholder { color: var(--cor-placeholder-input); }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+             box-shadow: 0 0 0 2px white, 0 0 0 4px var(--cor-primary); border-color: var(--cor-primary);
+        }
+         .form-input:disabled, .form-select:disabled, .form-textarea:disabled {
+             background-color: #f3f4f6; /* gray-100 */ cursor: not-allowed; opacity: 0.7;
+         }
+
+        .form-label { display: block; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; color: var(--cor-texto-label); margin-bottom: 0.25rem; }
+
+        .th-pad { padding-left: 1rem; padding-right: 1rem; padding-top: 0.75rem; padding-bottom: 0.75rem; text-align: left; font-size: 0.75rem; line-height: 1rem; font-weight: 500; color: #4b5563; /* gray-600 */ text-transform: uppercase; letter-spacing: 0.05em; }
+        @media (min-width: 640px) { .th-pad { padding-left: 1.5rem; padding-right: 1.5rem; } }
+
+        .td-pad { padding-left: 1rem; padding-right: 1rem; padding-top: 1rem; padding-bottom: 1rem; font-size: 0.875rem; line-height: 1.25rem; color: var(--cor-texto-secundario); }
+         @media (min-width: 640px) { .td-pad { padding-left: 1.5rem; padding-right: 1.5rem; } }
+
+        .badge-green { padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.125rem; padding-bottom: 0.125rem; border-radius: 9999px; font-size: 0.75rem; line-height: 1rem; font-weight: 600; background-color: #d1fae5; /* green-100 */ color: #065f46; /* green-800 */ }
+        .badge-red { padding-left: 0.5rem; padding-right: 0.5rem; padding-top: 0.125rem; padding-bottom: 0.125rem; border-radius: 9999px; font-size: 0.75rem; line-height: 1rem; font-weight: 600; background-color: #fee2e2; /* red-100 */ color: #991b1b; /* red-800 */ }
+
+        .status-select { padding: 0.25rem !important; font-size: 0.75rem !important; font-weight: 500 !important; border-width: 2px !important; }
+        .status-green { background-color: #d1fae5; /* green-100 */ border-color: #6ee7b7; /* green-300 */ color: #065f46; /* green-800 */ }
+        .status-yellow { background-color: #fef3c7; /* yellow-100 */ border-color: #fcd34d; /* yellow-300 */ color: #92400e; /* yellow-800 */ }
+        .status-red { background-color: #fee2e2; /* red-100 */ border-color: #fca5a5; /* red-300 */ color: #991b1b; /* red-800 */ }
+
+        /* Esconder por padrão */
+        .hidden { display: none; }
+
+        /* Animação de carregamento */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        /* Checkbox customizado (opcional, mas melhora visual) */
+        input[type="checkbox"] {
+            appearance: none;
+            width: 1.25rem; height: 1.25rem;
+            border: 1px solid #9ca3af; /* gray-400 */
+            border-radius: 0.25rem;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+        input[type="checkbox"]:checked {
+            background-color: var(--cor-primary);
+            border-color: var(--cor-primary);
+        }
+        input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 0.3rem; top: 0.05rem;
+            width: 0.4rem; height: 0.8rem;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        input[type="checkbox"]:focus {
+            box-shadow: 0 0 0 2px white, 0 0 0 4px var(--cor-primary);
+        }
+        input[type="checkbox"]:disabled {
+             background-color: #f3f4f6; border-color: #d1d5db; cursor: not-allowed;
+        }
+         input[type="checkbox"]:disabled:checked {
+              background-color: #9ca3af; border-color: #9ca3af;
+         }
+
+        /* Ajuste para Fieldset Disabled */
+        fieldset:disabled label, fieldset:disabled h3, fieldset:disabled p {
+            opacity: 0.7;
+        }
+        fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea, fieldset:disabled button {
+             cursor: not-allowed !important;
+             /* Não aplicar opacidade aqui, o navegador já aplica */
+        }
+    </style>
+</head>
+<body class="bg-blue-50 text-gray-900 font-inter">
+
+    <!-- Tela de Carregamento Global -->
+    <div id="loading-indicator" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[9999] hidden">
+      <div class="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-blue-500"></div>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="min-h-screen bg-blue-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-pink-50 rounded-lg shadow-xl p-8 w-full max-w-md">
+        <div class="flex justify-center mb-6">
+          <img id="login-logo" src="" alt="Logo da Associação" class="h-20 w-auto hidden">
+        </div>
+        <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">Controle da Associação</h2>
+
+        <div id="login-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 hidden"></div>
+
+        <form id="login-form">
+          <div class="space-y-4">
+            <div>
+              <label for="login-input" class="form-label">Usuário</label>
+              <input id="login-input" type="text" class="form-input" name="login" required>
+            </div>
+            <div>
+              <label for="senha-input" class="form-label">Senha</label>
+              <input id="senha-input" type="password" class="form-input" name="senha" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Entrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Aplicação Principal (Após Login) -->
+    <div id="app-container" class="hidden">
+      <div class="flex flex-col min-h-screen bg-blue-50 text-gray-900 font-inter">
+          
+          <!-- Marca D'água de Fundo -->
+          <div id="watermark-container" class="fixed inset-0 z-0 hidden">
+              <img id="watermark-image" src="" alt="Marca d'água" class="w-full h-full object-contain opacity-5 pointer-events-none">
+          </div>
+
+          <!-- Conteúdo Principal (relativo para a marca d'água) -->
+          <div class="relative z-10 flex flex-col min-h-screen">
+            <!-- Cabeçalho -->
+            <header class="bg-white border-b border-gray-200 sticky top-0 z-[1000] shadow-sm">
+              <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                  <!-- Logo e Nome -->
+                  <div class="flex-shrink-0 flex items-center gap-3">
+                      <img id="header-logo" src="" alt="Logo" class="h-10 w-auto hidden">
+                    <span id="associacao-nome-completo" class="text-xl lg:text-2xl font-bold text-blue-600 leading-tight hidden sm:block">Associação de Moradores do Jardim John Kennedy</span>
+                    <span id="associacao-nome-curto" class="text-lg font-bold text-blue-600 leading-tight sm:hidden">AMJJK</span>
+                  </div>
+                  
+                  <!-- Menu Desktop -->
+                  <div id="menu-desktop" class="hidden sm:ml-6 sm:flex sm:space-x-4">
+                    <!-- Links serão inseridos pelo JS -->
+                  </div>
+                  
+                  <!-- Botão Menu Mobile -->
+                  <div class="flex items-center sm:hidden">
+                    <button id="menu-mobile-button" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                      <span class="sr-only">Abrir menu</span>
+                      <!-- Ícone Hambúrguer -->
+                      <svg id="icon-hamburger" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                      </svg>
+                      <!-- Ícone X -->
+                      <svg id="icon-close" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </nav>
+
+              <!-- Menu Mobile Dropdown -->
+              <div id="menu-mobile-dropdown" class="hidden sm:hidden bg-white shadow-lg">
+                <div class="pt-2 pb-3 space-y-1">
+                  <!-- Links serão inseridos pelo JS -->
+                </div>
+              </div>
+            </header>
+
+            <!-- Conteúdo da Página -->
+            <main id="main-content" class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+              <!-- Conteúdo dinâmico será inserido aqui pelo JS -->
+            </main>
+
+            <!-- Rodapé -->
+            <footer class="bg-white border-t border-gray-200 mt-12">
+              <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
+                &copy; <span id="ano-atual"></span> - Gestão da Associação de Bairro. Todos os direitos reservados. By: An.Yoshi
+              </div>
+            </footer>
+          </div>
+      </div>
+    </div>
+
+    <!-- === MODAIS === -->
+
+    <!-- Modal Principal (Cadastro/Edição) -->
+    <div id="modal-principal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000] p-4 hidden">
+      <div class="bg-pink-50 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center p-4 border-b border-pink-200">
+          <h3 id="modal-titulo" class="text-xl font-semibold text-gray-900"></h3>
+          <button id="modal-fechar-btn-x" class="text-gray-400 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <!-- Modal Body: Formulário -->
+        <div id="modal-form-container" class="p-6 space-y-4 flex-grow overflow-y-auto">
+          <!-- Formulários específicos serão inseridos aqui pelo JS -->
+        </div>
+        
+        <!-- Modal Footer -->
+        <div class="flex justify-end items-center p-4 border-t bg-gray-50 border-gray-200 rounded-b-lg">
+          <button id="modal-cancelar-btn" type="button" class="btn btn-secondary mr-3">Cancelar</button>
+          <button id="modal-salvar-btn" type="button" class="btn btn-primary"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: ATA da Reunião (Agenda) -->
+    <div id="modal-ata" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[3000] p-4 hidden">
+      <div class="bg-pink-50 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex justify-between items-center p-4 border-b border-pink-200">
+          <h3 class="text-xl font-semibold text-gray-900">ATA / Resumo do Evento</h3>
+          <button id="modal-ata-fechar-btn-x" class="text-gray-400 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <!-- Modal Body -->
+        <div class="p-6 space-y-4 flex-grow overflow-y-auto">
+          <h4 id="modal-ata-evento-titulo" class="text-lg font-medium text-gray-800"></h4>
+          <p id="modal-ata-evento-info" class="text-sm text-gray-600"></p>
+          <div>
+            <label class="form-label">Registro da Reunião (ATA)</label>
+            <textarea id="modal-ata-textarea" rows="10" class="form-textarea" placeholder="Digite aqui o que foi discutido, decisões tomadas, lista de presentes..."></textarea>
+          </div>
+        </div>
+        <!-- Modal Footer -->
+        <div class="flex justify-end items-center p-4 border-t bg-gray-50 border-gray-200 rounded-b-lg">
+          <button id="modal-ata-cancelar-btn" type="button" class="btn btn-secondary mr-3">Cancelar</button>
+          <button id="modal-ata-salvar-btn" type="button" class="btn btn-primary">Salvar ATA</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts do Firebase e PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, 
+            collection, query, where, addDoc, getDocs, writeBatch, setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuração Firebase ---
+        let app, db, auth;
+        // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Use __app_id se disponível no ambiente
+
+        // ** INSERIDO DIRETAMENTE A CONFIGURAÇÃO FORNECIDA **
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjMdkotbQlYJmKOmzJHNqBs4mQPxz3wHc",
+            authDomain: "associacao-bairro-app.firebaseapp.com",
+            projectId: "associacao-bairro-app",
+            storageBucket: "associacao-bairro-app.appspot.com", // Corrigido o domínio aqui
+            messagingSenderId: "88264566629",
+            appId: "1:88264566629:web:89a63d187dfade794b238c"
+        };
+        // Usa o Project ID como App ID para os caminhos do Firestore, se __app_id não estiver definido
+         const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId; 
+        
+        // --- Estado da Aplicação ---
+        let isLoading = true;
+        let isLoggedIn = false;
+        let paginaAtual = 'inicio'; // 'inicio', 'caixa', 'associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'historico'
+        let menuAberto = false;
+        let filtroTermo = '';
+        const anoAtual = new Date().getFullYear();
+
+        // --- Estado de Autenticação e Login ---
+        let usuarioAtual = null; // Armazenará o objeto Usuario logado
+        let loginError = '';
+        
+        // --- Estado dos Dados (Arrays) ---
+        let caixa = [];
+        let associados = [];
+        let colaboradores = [];
+        let utilidades = [];
+        let sac = [];
+        let agenda = [];
+        let usuarios = [];
+        let historico = [];
+
+        // --- URLs de Imagem (Substitua pelos seus links!) ---
+        const logoUrl = ''; // Ex: 'https://i.imgur.com/seu-link-logo.png'
+        const watermarkUrl = ''; // Ex: 'https://i.imgur.com/seu-link-marca-dagua.png'
+
+        // --- Estado do Modal ---
+        let showModal = false;
+        let showAtaModal = false;
+        let modalTipo = '';
+        let modalTitulo = '';
+        let formState = {}; // Guarda os dados do formulário do modal
+        
+        // --- Listeners do Firebase (para Unsubscribe) ---
+        let unsubscribers = [];
+
+        // --- Elementos do DOM (para acesso rápido) ---
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const loginScreen = document.getElementById('login-screen');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const loginInputEl = document.getElementById('login-input');
+        const senhaInputEl = document.getElementById('senha-input');
+        const loginErrorEl = document.getElementById('login-error');
+        const loginLogoEl = document.getElementById('login-logo');
+        const headerLogoEl = document.getElementById('header-logo');
+        const watermarkContainer = document.getElementById('watermark-container');
+        const watermarkImage = document.getElementById('watermark-image');
+        const menuDesktop = document.getElementById('menu-desktop');
+        const menuMobileButton = document.getElementById('menu-mobile-button');
+        const iconHamburger = document.getElementById('icon-hamburger');
+        const iconClose = document.getElementById('icon-close');
+        const menuMobileDropdown = document.getElementById('menu-mobile-dropdown');
+        const mainContent = document.getElementById('main-content');
+        const anoAtualEl = document.getElementById('ano-atual');
+        const modalPrincipal = document.getElementById('modal-principal');
+        const modalTituloEl = document.getElementById('modal-titulo');
+        const modalFormContainer = document.getElementById('modal-form-container');
+        const modalFecharBtnX = document.getElementById('modal-fechar-btn-x');
+        const modalCancelarBtn = document.getElementById('modal-cancelar-btn');
+        const modalSalvarBtn = document.getElementById('modal-salvar-btn');
+        const modalAta = document.getElementById('modal-ata');
+        const modalAtaFecharBtnX = document.getElementById('modal-ata-fechar-btn-x');
+        const modalAtaCancelarBtn = document.getElementById('modal-ata-cancelar-btn');
+        const modalAtaSalvarBtn = document.getElementById('modal-ata-salvar-btn');
+        const modalAtaEventoTitulo = document.getElementById('modal-ata-evento-titulo');
+        const modalAtaEventoInfo = document.getElementById('modal-ata-evento-info');
+        const modalAtaTextarea = document.getElementById('modal-ata-textarea');
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            if(anoAtualEl) anoAtualEl.textContent = anoAtual;
+            setupEventListeners(); // Configura listeners GERAIS primeiro
+            updateLoadingState(); // Mostra o loading inicial
+
+            try {
+                // ** USA A CONFIGURAÇÃO DEFINIDA ACIMA **
+                // const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+                // const firebaseConfig = JSON.parse(firebaseConfigString);
+
+                if (!firebaseConfig.apiKey) {
+                    throw new Error("Configuração do Firebase está incompleta ou ausente.");
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // Para logs detalhados do Firebase
+
+                // Carrega imagens se URLs foram fornecidas
+                updateImages();
+
+                // Observador de Autenticação do Firebase
+                // A lógica aqui permanece a mesma, pois o login manual ainda é necessário
+                 onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log("Firebase Auth state changed: User authenticated via token (UID:", user.uid, "). Manual login still required for app access.");
+                        // Tentativa de login anônimo (pode ser útil para regras de segurança que exigem auth != null)
+                        if (user.isAnonymous && !isLoggedIn) {
+                             console.log("Anonymous user detected, showing login screen.");
+                             isLoading = false;
+                             updateUI();
+                        } else if (!user.isAnonymous && !isLoggedIn) {
+                             // Usuário não anônimo (talvez token customizado), mas ainda não logado no app
+                             console.log("Non-anonymous user detected, showing login screen.");
+                             isLoading = false;
+                             updateUI();
+                        }
+                    } else {
+                        console.log("Firebase Auth state changed: No user.");
+                        // Tenta login anônimo para simplificar regras de segurança
+                        try {
+                           console.log("Attempting anonymous sign-in...");
+                           await signInAnonymously(auth);
+                           // onAuthStateChanged será chamado novamente com o usuário anônimo
+                           console.log("Anonymous sign-in successful (waiting for state change).");
+                        } catch (anonError) {
+                            console.error("Anonymous sign-in failed:", anonError);
+                            // Se falhar, continua mostrando a tela de login
+                             isLoggedIn = false;
+                             usuarioAtual = null;
+                             isLoading = false;
+                             loginError = "Falha na conexão inicial."; // Mensagem genérica
+                             updateUI();
+                        }
+                    }
+                });
+
+
+            } catch (e) {
+                console.error("Erro crítico na inicialização do Firebase:", e);
+                isLoading = false;
+                isLoggedIn = false;
+                loginError = `Erro ao conectar: ${e.message}`;
+                updateUI();
+            }
+        });
+
+        // --- Funções de UI ---
+
+        function updateLoadingState() {
+            if (loadingIndicator) {
+                loadingIndicator.classList.toggle('hidden', !isLoading);
+            }
+        }
+
+        function updateUI() {
+            updateLoadingState();
+             if (!loginScreen || !appContainer || !loginErrorEl) return; // Garante que elementos existem
+
+            if (isLoggedIn) {
+                loginScreen.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                renderizarCabecalho(); // Renderiza menus
+                renderizarPagina(); // Renderiza conteúdo principal
+            } else {
+                appContainer.classList.add('hidden');
+                loginScreen.classList.remove('hidden');
+                loginErrorEl.textContent = loginError;
+                loginErrorEl.classList.toggle('hidden', !loginError);
+                // Limpa campos se houver erro
+                if(loginError) {
+                    if (loginInputEl) loginInputEl.value = '';
+                    if (senhaInputEl) senhaInputEl.value = '';
+                }
+            }
+        }
+
+        function updateImages() {
+            if (logoUrl) {
+                if(loginLogoEl) {
+                    loginLogoEl.src = logoUrl;
+                    loginLogoEl.classList.remove('hidden');
+                }
+                if(headerLogoEl) {
+                    headerLogoEl.src = logoUrl;
+                    headerLogoEl.classList.remove('hidden');
+                }
+            } else {
+                 if(loginLogoEl) loginLogoEl.classList.add('hidden');
+                 if(headerLogoEl) headerLogoEl.classList.add('hidden');
+            }
+            if (watermarkUrl) {
+                if(watermarkImage) watermarkImage.src = watermarkUrl;
+                if(watermarkContainer) watermarkContainer.classList.remove('hidden');
+            } else {
+                if(watermarkContainer) watermarkContainer.classList.add('hidden');
+            }
+        }
+
+        // --- Funções de Autenticação e Login ---
+
+        async function fazerLogin(event) {
+            event.preventDefault();
+            isLoading = true;
+            loginError = '';
+            updateUI();
+
+            const loginInput = loginInputEl.value.trim();
+            const senhaInput = senhaInputEl.value;
+
+            try {
+                // 1. Verificar se o usuário "ayoshi" (admin) existe
+                const adminLogin = 'ayoshi';
+                const adminPass = 'a1985';
+                const adminQuery = query(collection(db, getCollectionPath('usuarios')), where("login", "==", adminLogin));
+                const adminSnapshot = await getDocs(adminQuery);
+
+                let adminUser = null;
+                if (adminSnapshot.empty) {
+                    // Admin não existe, vamos criar se o login for o correto
+                    if (loginInput === adminLogin && senhaInput === adminPass) {
+                        const adminDocRef = doc(collection(db, getCollectionPath('usuarios')));
+                        adminUser = {
+                            id: adminDocRef.id, // ID gerado pelo Firestore
+                            login: adminLogin,
+                            senha: adminPass, // Inseguro, mas solicitado
+                            isAdmin: true,
+                            permissoes: { caixa: true, associados: true, colaboradores: true, utilidades: true, sac: true, agenda: true }
+                        };
+                        await setDoc(adminDocRef, adminUser);
+                        console.log("Usuário admin 'ayoshi' criado.");
+                        await registrarHistorico("Admin Criado", `Usuário '${adminLogin}' criado no primeiro login.`, adminUser.login);
+                    } else {
+                        loginError = "Usuário ou senha inválidos. (Admin não configurado)";
+                        isLoading = false;
+                        updateUI();
+                        return;
+                    }
+                } else {
+                    // Admin existe, pegar dados
+                    adminUser = { id: adminSnapshot.docs[0].id, ...adminSnapshot.docs[0].data() };
+                }
+                
+                // 2. Tentar logar o usuário
+                let usuarioLogado = null;
+
+                if (loginInput === adminUser.login && senhaInput === adminUser.senha) {
+                    usuarioLogado = adminUser;
+                } else {
+                    const userQuery = query(collection(db, getCollectionPath('usuarios')), where("login", "==", loginInput));
+                    const userSnapshot = await getDocs(userQuery);
+                    
+                    if (userSnapshot.empty) {
+                        loginError = "Usuário ou senha inválidos.";
+                        isLoading = false;
+                        updateUI();
+                        return;
+                    }
+                    
+                    const userData = { id: userSnapshot.docs[0].id, ...userSnapshot.docs[0].data() };
+                    if (userData.senha === senhaInput) {
+                        usuarioLogado = userData;
+                    } else {
+                        loginError = "Usuário ou senha inválidos.";
+                        isLoading = false;
+                        updateUI();
+                        return;
+                    }
+                }
+                
+                // 3. Se logou com sucesso
+                await verificarLoginUsuario(usuarioLogado.id, usuarioLogado); // Passa o usuário encontrado
+
+            } catch (e) {
+                console.error("Erro no processo de login:", e);
+                loginError = `Erro ao tentar fazer login: ${e.message}`;
+                isLoading = false;
+                updateUI();
+            }
+        }
+        
+        // Recebe ID do Doc do Firestore (NÃO o UID do Auth)
+        async function verificarLoginUsuario(firestoreUserId, userData = null) {
+             console.log("Verificando login para Firestore User ID:", firestoreUserId);
+             try {
+                let usuario = userData; // Usa o userData se veio do login manual
+
+                // Se não veio do login manual (p.ex., refresh com token), busca no Firestore PELO ID DO DOCUMENTO
+                if (!usuario) {
+                    const userDocRef = doc(db, getCollectionPath('usuarios'), firestoreUserId);
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        usuario = { id: userDoc.id, ...userDoc.data() };
+                    }
+                }
+
+                if (usuario) {
+                    console.log("Usuário do Firestore encontrado:", usuario.login);
+                    usuarioAtual = usuario;
+                    isLoggedIn = true; // MARCA COMO LOGADO NO APP
+                    isLoading = false;
+                    if(loginInputEl) loginInputEl.value = ''; // Limpa campos de login
+                    if(senhaInputEl) senhaInputEl.value = '';
+                    loginError = '';
+                    
+                    // Registra histórico apenas se veio diretamente da função de login manual
+                    if (userData) { 
+                       await registrarHistorico("Login", "Usuário logado com sucesso.");
+                    }
+
+                    iniciarListeners(); // Começa a ouvir os dados
+                    updateUI(); // Atualiza a interface
+                } else {
+                    // ID não encontrado na coleção 'usuarios'
+                    console.error("Usuário Firestore (ID: " + firestoreUserId + ") não encontrado no banco de dados.");
+                    isLoading = false;
+                    isLoggedIn = false; // Garante que não está logado no app
+                    // Não precisa deslogar do Firebase Auth anônimo
+                    loginError = "Usuário não reconhecido no sistema.";
+                    updateUI();
+                }
+            } catch (e) {
+                console.error("Erro ao verificar dados do usuário no Firestore:", e);
+                isLoading = false;
+                isLoggedIn = false;
+                loginError = `Erro ao carregar dados do usuário: ${e.message}`;
+                updateUI();
+            }
+        }
+
+
+        async function fazerLogout() {
+            isLoading = true;
+            updateLoadingState();
+
+            // Limpa listeners
+            unsubscribers.forEach(unsub => unsub());
+            unsubscribers = [];
+            
+            // Limpa dados locais
+            caixa = []; associados = []; colaboradores = []; utilidades = []; sac = []; agenda = []; usuarios = []; historico = [];
+            
+            // Reseta estado DO APP
+            usuarioAtual = null;
+            isLoggedIn = false;
+            paginaAtual = 'inicio';
+            
+            // NÃO desloga do Firebase Auth anônimo, apenas reseta o app
+            
+            isLoading = false;
+            updateUI(); // Mostra a tela de login
+        }
+
+        // --- Funções de Navegação ---
+        
+        function mudarPagina(pagina) {
+            paginaAtual = pagina;
+            filtroTermo = ''; // Reseta filtro ao mudar de página
+            menuAberto = false; // Fecha menu mobile
+            updateUI(); // Renderiza a nova página e atualiza o menu
+        }
+        
+        function toggleMenuMobile() {
+            menuAberto = !menuAberto;
+            if(iconHamburger) iconHamburger.classList.toggle('hidden', menuAberto);
+            if(iconClose) iconClose.classList.toggle('hidden', !menuAberto);
+            if(menuMobileDropdown) menuMobileDropdown.classList.toggle('hidden', !menuAberto);
+        }
+        
+        // --- Funções de Renderização ---
+
+        function renderizarCabecalho() {
+             const paginas = ['inicio', 'caixa', 'associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'historico'];
+             let menuDesktopHtml = '';
+             let menuMobileHtml = '';
+
+             paginas.forEach(p => {
+                 const nomeCapitalizado = p.charAt(0).toUpperCase() + p.slice(1);
+                 const activeClass = paginaAtual === p ? 'link-active' : 'link-inactive';
+                 const activeClassMobile = paginaAtual === p ? 'link-mobile-active' : 'link-mobile-inactive';
+
+                 menuDesktopHtml += `<a data-page="${p}" class="link-base ${activeClass}">${nomeCapitalizado}</a>`;
+                 menuMobileHtml += `<a data-page="${p}" class="link-mobile-base ${activeClassMobile}">${nomeCapitalizado}</a>`;
+             });
+
+             // Botão Sair
+             menuDesktopHtml += `<button id="logout-btn-desktop" class="link-inactive !border-transparent !text-red-500 hover:!text-red-700">Sair</button>`;
+             menuMobileHtml += `<button id="logout-btn-mobile" class="link-mobile-inactive !border-transparent !text-red-500 hover:!text-red-700 w-full text-left">Sair</button>`;
+
+             if (menuDesktop) menuDesktop.innerHTML = menuDesktopHtml;
+             // Garante que o container do menu mobile existe antes de setar o innerHTML
+             const menuMobileContainer = menuMobileDropdown ? menuMobileDropdown.querySelector('div') : null;
+             if (menuMobileContainer) menuMobileContainer.innerHTML = menuMobileHtml;
+
+             // Remove listeners antigos para evitar duplicação (mais seguro)
+             menuDesktop?.querySelectorAll('a, button').forEach(el => el.replaceWith(el.cloneNode(true)));
+             menuMobileContainer?.querySelectorAll('a, button').forEach(el => el.replaceWith(el.cloneNode(true)));
+
+
+             // Readiciona listeners aos links DEPOIS de inseri-los no DOM
+             if (menuDesktop) {
+                 menuDesktop.querySelectorAll('a[data-page], button[id^="logout-btn-desktop"]').forEach(el => {
+                     if (el.id?.startsWith('logout')) {
+                         el.addEventListener('click', fazerLogout);
+                     } else if(el.dataset.page) {
+                         el.addEventListener('click', () => mudarPagina(el.dataset.page));
+                     }
+                 });
+             }
+              if (menuMobileContainer) {
+                  menuMobileContainer.querySelectorAll('a[data-page], button[id^="logout-btn-mobile"]').forEach(el => {
+                     if (el.id?.startsWith('logout')) {
+                         el.addEventListener('click', fazerLogout);
+                     } else if(el.dataset.page) {
+                         el.addEventListener('click', () => mudarPagina(el.dataset.page));
+                     }
+                 });
+              }
+        }
+
+        function renderizarPagina() {
+            if (!mainContent) return; // Garante que o elemento existe
+            mainContent.innerHTML = ''; // Limpa conteúdo anterior
+            // Não reseta filtro aqui, pois pode ser necessário ao re-renderizar a mesma página (ex: filtro)
+            // filtroTermo = ''; 
+
+            switch (paginaAtual) {
+                case 'inicio': renderizarInicio(); break;
+                case 'caixa': renderizarCaixa(); break;
+                case 'associados': renderizarAssociados(); break;
+                case 'colaboradores': renderizarColaboradores(); break;
+                case 'utilidades': renderizarUtilidades(); break;
+                case 'sac': renderizarSAC(); break;
+                case 'agenda': renderizarAgenda(); break;
+                case 'historico': renderizarHistoricoUsuarios(); break;
+                default: mainContent.innerHTML = '<p>Página não encontrada.</p>';
+            }
+             // Adiciona listeners para botões que podem ter sido recriados
+             // A delegação no setupEventListeners deve cuidar disso, mas chamamos para garantir
+             // addEventListenersGlobais();
+        }
+
+        // --- Funções Específicas de Renderização de Página ---
+
+        function renderizarInicio() {
+            const saldo = calcularSaldoCaixa();
+            const pendentes = (sac || []).filter(s => s && (s.status === 'pendente' || s.status === 'analise')).length;
+
+            mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <h1 class="text-3xl font-bold text-gray-900">Painel de Controle</h1>
+                  <p class="text-lg text-gray-700">Bem-vindo, <strong class="text-blue-600">${usuarioAtual?.login || ''}</strong>. Seu ID de usuário é: <strong class="text-blue-600 select-all">${usuarioAtual?.id || ''}</strong></p>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                      <h3 class="text-lg font-semibold text-blue-600">Associados</h3>
+                      <p class="text-4xl font-bold text-gray-900">${(associados || []).length}</p>
+                    </div>
+                    <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                      <h3 class="text-lg font-semibold text-green-600">Saldo em Caixa</h3>
+                      <p class="text-4xl font-bold text-gray-900">${formatarMoeda(saldo)}</p>
+                    </div>
+                    <div class="bg-pink-50 p-6 rounded-lg shadow-sm border border-pink-200">
+                      <h3 class="text-lg font-semibold text-yellow-600">SAC Pendentes</h3>
+                      <p class="text-4xl font-bold text-gray-900">${pendentes}</p>
+                    </div>
+                  </div>
+
+                  <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Backup e Restauração</h2>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                      <button id="backup-btn" class="btn btn-primary flex-1 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        Fazer Backup (Download)
+                      </button>
+                      <label class="btn btn-secondary flex-1 flex items-center justify-center gap-2 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" transform="rotate(180 10 10)" /></svg>
+                        Restaurar Backup (Upload)
+                        <input id="restore-input" type="file" class="hidden" accept=".json">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+            `;
+             // Adiciona listener específico para restore-input AQUI, após ser renderizado
+             const restoreInput = document.getElementById('restore-input');
+             if (restoreInput) {
+                // Remove listener antigo se existir, para evitar duplicação
+                restoreInput.replaceWith(restoreInput.cloneNode(true));
+                document.getElementById('restore-input').addEventListener('change', restaurarBackup);
+             }
+        }
+
+        function renderizarCaixa() {
+            const temPermissao = temPermissaoEscrita('caixa');
+            const totais = calcularTotaisCaixa();
+
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">Livro Caixa</h1>
+                    <div class="flex flex-wrap gap-2">
+                      <button id="relatorio-caixa-pdf-btn" class="btn btn-secondary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                        Imprimir Relatório
+                      </button>
+                      ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="caixa" data-subtype='{"tipo":"saida"}' class="btn btn-danger flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                          + Nova Saída
+                        </button>
+                        <button data-action="abrirModal" data-tipo="caixa" data-subtype='{"tipo":"entrada"}' class="btn btn-green flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          + Nova Entrada
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                      <h3 class="text-lg font-semibold text-green-600">Total Entradas</h3>
+                      <p class="text-3xl font-bold text-green-700">${formatarMoeda(totais.entradas)}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                      <h3 class="text-lg font-semibold text-red-600">Total Saídas</h3>
+                      <p class="text-3xl font-bold text-red-700">${formatarMoeda(totais.saidas)}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg text-center shadow-sm">
+                      <h3 class="text-lg font-semibold text-blue-600">Saldo Atual</h3>
+                      <p class="text-3xl font-bold text-blue-700">${formatarMoeda(totais.saldo)}</p>
+                    </div>
+                  </div>
+                  ${renderizarTabela('caixa', caixa, ['Data', 'Tipo', 'Descrição', 'Doador/Destino', 'Valor', 'Ações'], temPermissao)}
+                </div>
+            `;
+        }
+
+        function renderizarAssociados() {
+            const temPermissao = temPermissaoEscrita('associados');
+            const dadosFiltrados = filtrarDados(associados, ['nome', 'email']);
+            mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">Associados</h1>
+                    <div class="flex gap-2">
+                      <button id="imprimir-lista-associados-btn" class="btn btn-secondary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                        Imprimir Lista
+                      </button>
+                      ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="associados" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Associado
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                  <input id="filtro-input" type="text" placeholder="Filtrar por nome ou e-mail..." class="form-input" value="${filtroTermo}">
+                  ${renderizarTabela('associados', dadosFiltrados, ['Nome', 'E-mail', 'Telefone', 'Cargo', 'Ações'], temPermissao)}
+                </div>
+            `;
+             // Adiciona listener ao input de filtro DEPOIS de inseri-lo
+             const filtroInput = document.getElementById('filtro-input');
+             if(filtroInput) {
+                 // Remove listener antigo se existir
+                 filtroInput.replaceWith(filtroInput.cloneNode(true));
+                 document.getElementById('filtro-input').addEventListener('input', (e) => {
+                     filtroTermo = e.target.value;
+                     renderizarAssociados(); // Re-renderiza a página com o filtro
+                 });
+                 // Mantém a posição do cursor (útil ao digitar)
+                 const pos = filtroTermo.length;
+                 document.getElementById('filtro-input').setSelectionRange(pos, pos);
+                  document.getElementById('filtro-input').focus(); // Foca no input
+             }
+        }
+
+        function renderizarColaboradores() {
+             const temPermissao = temPermissaoEscrita('colaboradores');
+             const dadosFiltrados = filtrarDados(colaboradores, ['nome', 'email']);
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">Colaboradores</h1>
+                    <div class="flex gap-2">
+                       <button id="imprimir-lista-colaboradores-btn" class="btn btn-secondary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                        Imprimir Lista
+                      </button>
+                      ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="colaboradores" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Colaborador
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                  <input id="filtro-input" type="text" placeholder="Filtrar por nome ou e-mail..." class="form-input" value="${filtroTermo}">
+                   ${renderizarTabela('colaboradores', dadosFiltrados, ['Nome', 'E-mail', 'Telefone', 'Cargo', 'Ações'], temPermissao)}
+                </div>
+            `;
+             // Adiciona listener ao input de filtro DEPOIS de inseri-lo
+             const filtroInput = document.getElementById('filtro-input');
+             if(filtroInput) {
+                  // Remove listener antigo se existir
+                 filtroInput.replaceWith(filtroInput.cloneNode(true));
+                 document.getElementById('filtro-input').addEventListener('input', (e) => {
+                     filtroTermo = e.target.value;
+                     renderizarColaboradores(); // Re-renderiza a página com o filtro
+                 });
+                 const pos = filtroTermo.length;
+                 document.getElementById('filtro-input').setSelectionRange(pos, pos);
+                  document.getElementById('filtro-input').focus(); // Foca no input
+             }
+        }
+
+        function renderizarUtilidades() {
+            const temPermissao = temPermissaoEscrita('utilidades');
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">Utilidades Públicas</h1>
+                    <div class="flex gap-2">
+                      <button id="imprimir-lista-utilidades-btn" class="btn btn-secondary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                        Imprimir Lista
+                      </button>
+                      ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="utilidades" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Local
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                   ${renderizarTabela('utilidades', utilidades, ['Estabelecimento', 'Telefone', 'Endereço', 'Ações'], temPermissao)}
+                </div>
+            `;
+        }
+
+        function renderizarSAC() {
+            const temPermissao = temPermissaoEscrita('sac');
+            const dadosFiltrados = filtrarDados(sac, ['nome', 'tipo']);
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">SAC - Atendimento</h1>
+                     ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="sac" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Registro
+                        </button>
+                      ` : ''}
+                  </div>
+                  <input id="filtro-input" type="text" placeholder="Filtrar por nome ou tipo..." class="form-input" value="${filtroTermo}">
+                  ${renderizarTabela('sac', dadosFiltrados, ['Reclamante', 'Tipo', 'Status', 'Ações'], temPermissao)}
+                </div>
+            `;
+             // Adiciona listener ao input de filtro DEPOIS de inseri-lo
+             const filtroInput = document.getElementById('filtro-input');
+             if(filtroInput) {
+                  // Remove listener antigo se existir
+                 filtroInput.replaceWith(filtroInput.cloneNode(true));
+                 document.getElementById('filtro-input').addEventListener('input', (e) => {
+                     filtroTermo = e.target.value;
+                     renderizarSAC(); // Re-renderiza a página com o filtro
+                 });
+                 const pos = filtroTermo.length;
+                  document.getElementById('filtro-input').setSelectionRange(pos, pos);
+                  document.getElementById('filtro-input').focus(); // Foca no input
+             }
+        }
+
+        function renderizarAgenda() {
+             const temPermissao = temPermissaoEscrita('agenda');
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 class="text-3xl font-bold text-gray-900">Agenda de Eventos</h1>
+                    <div class="flex gap-2">
+                      <button id="imprimir-lista-agenda-btn" class="btn btn-secondary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                        Imprimir Agenda
+                      </button>
+                      ${temPermissao ? `
+                        <button data-action="abrirModal" data-tipo="agenda" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Evento
+                        </button>
+                      ` : ''}
+                    </div>
+                  </div>
+                  ${renderizarTabela('agenda', agenda, ['Data e Hora', 'Tipo', 'Local', 'Ações'], temPermissao)}
+                </div>
+            `;
+        }
+
+        function renderizarHistoricoUsuarios() {
+            const isAdmin = usuarioAtual?.isAdmin;
+             mainContent.innerHTML = `
+                <div class="space-y-6">
+                  ${isAdmin ? `
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-900">Gerenciamento de Usuários</h2>
+                        <button data-action="abrirModal" data-tipo="usuarios" class="btn btn-primary flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                          Novo Usuário
+                        </button>
+                      </div>
+                      ${renderizarTabelaUsuarios(usuarios)}
+                    </div>
+                  ` : ''}
+
+                  <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Histórico de Atividades</h2>
+                    ${renderizarTabelaHistorico(historico)}
+                  </div>
+                </div>
+            `;
+        }
+
+        // --- Funções de Renderização de Tabelas ---
+
+        function renderizarTabela(tipo, dados, colunas, temPermissaoEscrita) {
+             if (!dados) dados = []; // Garante que dados é um array
+            let tableHtml = `
+                <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+                  <table class="w-full">
+                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                      <tr>${colunas.map(c => `<th class="th-pad">${c}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+            `;
+
+            if (dados.length === 0) {
+                tableHtml += `<tr><td colspan="${colunas.length}" class="p-6 text-center text-gray-500">Nenhum registro encontrado.</td></tr>`;
+            } else {
+                dados.forEach(item => {
+                     // Adiciona verificação para item nulo/indefinido
+                    if (item) { 
+                        tableHtml += `<tr>${gerarLinhaTabela(tipo, item, temPermissaoEscrita)}</tr>`;
+                    }
+                });
+            }
+
+            tableHtml += `</tbody></table></div>`;
+            return tableHtml;
+        }
+        
+        // Função auxiliar para gerar o conteúdo das células de uma linha
+        function gerarLinhaTabela(tipo, item, temPermissaoEscrita) {
+            let linhaHtml = '';
+            // Garante que item não é nulo ou indefinido
+            if (!item) return '<td>Erro: Item inválido</td>'.repeat(5); // Ajuste o número de colunas conforme necessário
+
+            switch (tipo) {
+                case 'caixa':
+                    const valorClasse = item.tipo === 'entrada' ? 'text-green-600' : 'text-red-600';
+                    const tipoBadge = item.tipo === 'entrada' ? '<span class="badge-green">Entrada</span>' : '<span class="badge-red">Saída</span>';
+                    linhaHtml = `
+                        <td class="td-pad">${formatarData(item.data)}</td>
+                        <td class="td-pad">${tipoBadge}</td>
+                        <td class="td-pad">${item.descricao || ''}</td>
+                        <td class="td-pad">${(item.tipo === 'entrada' ? item.pessoa : item.destino) || ''}</td>
+                        <td class="td-pad text-right font-medium ${valorClasse}">${formatarMoeda(item.valor || 0)}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button data-action="imprimirComprovante" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Imprimir Comprovante">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3h10V4H5zm-2 2a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6zm3 2h6v2H6V8zm0 4h6v2H6v-2z" clip-rule="evenodd" /></svg>
+                          </button>
+                          <button data-action="abrirModal" data-tipo="caixa" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                          </button>
+                          ${temPermissaoEscrita ? `
+                            <button data-action="excluirItem" data-tipo="caixa" data-id="${item.id}" data-nome="${item.descricao || 'Lançamento'}" class="btn-icon btn-icon-danger" title="Excluir">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                          ` : ''}
+                        </td>`;
+                    break;
+                case 'associados':
+                case 'colaboradores':
+                    linhaHtml = `
+                        <td class="td-pad font-medium text-gray-900">${item.nome || ''}</td>
+                        <td class="td-pad">${item.email || ''}</td>
+                        <td class="td-pad">${item.telefone || ''}</td>
+                        <td class="td-pad">${item.cargo || ''}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button data-action="abrirModal" data-tipo="${tipo}" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                          </button>
+                          ${temPermissaoEscrita ? `
+                            <button data-action="excluirItem" data-tipo="${tipo}" data-id="${item.id}" data-nome="${item.nome || 'Registro'}" class="btn-icon btn-icon-danger" title="Excluir">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                          ` : ''}
+                        </td>`;
+                    break;
+                 case 'utilidades':
+                     linhaHtml = `
+                        <td class="td-pad font-medium text-gray-900">${item.nome || ''}</td>
+                        <td class="td-pad">${item.telefone || ''}</td>
+                        <td class="td-pad">${item.endereco || ''}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button data-action="abrirModal" data-tipo="utilidades" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                          </button>
+                          ${temPermissaoEscrita ? `
+                            <button data-action="excluirItem" data-tipo="utilidades" data-id="${item.id}" data-nome="${item.nome || 'Local'}" class="btn-icon btn-icon-danger" title="Excluir">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                          ` : ''}
+                        </td>`;
+                     break;
+                 case 'sac':
+                     const statusCls = statusClasses(item.status);
+                     const tipoCapitalized = (item.tipo || '').charAt(0).toUpperCase() + (item.tipo || '').slice(1);
+                     linhaHtml = `
+                        <td class="td-pad font-medium text-gray-900">${item.nome || ''}</td>
+                        <td class="td-pad">${tipoCapitalized}</td>
+                        <td class="td-pad">
+                          <select data-id="${item.id}" class="status-select ${statusCls}" ${!temPermissaoEscrita ? 'disabled' : ''}>
+                            <option value="pendente" class="status-red" ${item.status === 'pendente' ? 'selected' : ''}>Não Resolvido</option>
+                            <option value="analise" class="status-yellow" ${item.status === 'analise' ? 'selected' : ''}>Em Análise</option>
+                            <option value="resolvido" class="status-green" ${item.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
+                          </select>
+                        </td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                           <button data-action="imprimirSac" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Imprimir PDF">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm0 2h8v12H6V4zm3 1a1 1 0 10-2 0v2a1 1 0 102 0V5zm0 4a1 1 0 10-2 0v2a1 1 0 102 0V9zm0 4a1 1 0 10-2 0v2a1 1 0 102 0v-2z" clip-rule="evenodd" /></svg>
+                          </button>
+                          <button data-action="abrirModal" data-tipo="sac" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                          </button>
+                          ${temPermissaoEscrita ? `
+                            <button data-action="excluirItem" data-tipo="sac" data-id="${item.id}" data-nome="${item.nome || 'Registro'}" class="btn-icon btn-icon-danger" title="Excluir">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                          ` : ''}
+                        </td>`;
+                    break;
+                 case 'agenda':
+                     linhaHtml = `
+                        <td class="td-pad font-medium text-gray-900">${formatarDataHora(item.dataHora)}</td>
+                        <td class="td-pad">${item.tipo || ''}</td>
+                        <td class="td-pad">${item.local || ''}</td>
+                        <td class="td-pad space-x-2 whitespace-nowrap">
+                          <button data-action="abrirModalAta" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar ATA">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10.392C3.057 15.71 4.245 16 5.5 16c1.255 0 2.443-.29 3.5-.804V4.804zM11 4.804A7.968 7.968 0 0114.5 4c1.255 0 2.443.29 3.5.804v10.392C16.943 15.71 15.755 16 14.5 16c-1.255 0-2.443-.29-3.5-.804V4.804z" /></svg>
+                          </button>
+                          <button data-action="abrirModal" data-tipo="agenda" data-id="${item.id}" class="btn-icon btn-icon-secondary" title="Ver/Editar Evento">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                          </button>
+                          ${temPermissaoEscrita ? `
+                            <button data-action="excluirItem" data-tipo="agenda" data-id="${item.id}" data-nome="${item.tipo || 'Evento'}" class="btn-icon btn-icon-danger" title="Excluir Evento">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                            </button>
+                          ` : ''}
+                        </td>`;
+                     break;
+                 default:
+                    linhaHtml = `<td colspan="100%" class="td-pad text-red-500">Erro: Tipo de tabela desconhecido '${tipo}'</td>`;
+            }
+            return linhaHtml;
+        }
+
+
+        function renderizarTabelaUsuarios(dados) {
+             if (!dados) dados = []; // Garante que é um array
+             let tableHtml = `
+                <div class="rounded-lg overflow-x-auto border">
+                  <table class="w-full">
+                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                      <tr>
+                        <th class="th-pad">Login</th>
+                        <th class="th-pad">Senha (Visível só p/ Admin)</th>
+                        <th class="th-pad">Admin</th>
+                        <th class="th-pad">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+            `;
+             if (dados.length === 0) {
+                 tableHtml += `<tr><td colspan="4" class="p-6 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>`;
+             } else {
+                 dados.forEach(user => {
+                      if (!user) return; // Pula se o usuário for inválido
+                     tableHtml += `
+                        <tr>
+                          <td class="td-pad font-medium text-gray-900">${user.login || ''}</td>
+                          <td class="td-pad text-gray-600">${user.senha || ''}</td>
+                          <td class="td-pad">${user.isAdmin ? 'Sim' : 'Não'}</td>
+                          <td class="td-pad space-x-2 whitespace-nowrap">
+                            ${user.login !== 'ayoshi' ? `
+                              <button data-action="abrirModal" data-tipo="usuarios" data-id="${user.id}" class="btn-icon btn-icon-secondary" title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-1.172 1.172-2.828-2.828 1.172-1.172zM11.172 6.172L14 9 5.828 17.172a1 1 0 01-.707.293H4a1 1 0 01-1-1v-1.121a1 1 0 01.293-.707L11.172 6.172z" /></svg>
+                              </button>
+                              <button data-action="excluirItem" data-tipo="usuarios" data-id="${user.id}" data-nome="${user.login || 'Usuário'}" class="btn-icon btn-icon-danger" title="Excluir">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                              </button>
+                            ` : '<span class="td-pad text-xs text-gray-500">(Admin Padrão)</span>'}
+                          </td>
+                        </tr>
+                     `;
+                 });
+             }
+             tableHtml += `</tbody></table></div>`;
+             return tableHtml;
+        }
+
+        function renderizarTabelaHistorico(dados) {
+             if (!dados) dados = []; // Garante que é um array
+             let tableHtml = `
+                <div class="rounded-lg overflow-x-auto border">
+                  <table class="w-full">
+                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                      <tr>
+                        <th class="th-pad">Data/Hora</th>
+                        <th class="th-pad">Usuário</th>
+                        <th class="th-pad">Ação</th>
+                        <th class="th-pad">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+            `;
+             if (dados.length === 0) {
+                 tableHtml += `<tr><td colspan="4" class="p-6 text-center text-gray-500">Nenhum histórico encontrado.</td></tr>`;
+             } else {
+                 dados.forEach(item => {
+                      if (!item) return; // Pula se o item for inválido
+                     tableHtml += `
+                        <tr>
+                          <td class="td-pad whitespace-nowrap">${formatarDataHora(item.data)}</td>
+                          <td class="td-pad font-medium text-gray-900">${item.usuario || ''}</td>
+                          <td class="td-pad">${item.acao || ''}</td>
+                          <td class="td-pad">${item.detalhes || ''}</td>
+                        </tr>
+                     `;
+                 });
+             }
+             tableHtml += `</tbody></table></div>`;
+             return tableHtml;
+        }
+
+        // --- Funções do Modal ---
+
+        function abrirModal(tipo, itemData = null, subTipo = null) {
+            modalTipo = tipo;
+            let item = itemData; // O próprio objeto se for edição, ou null se for novo
+            let dadosIniciais = {};
+            const permissoesPadrao = { caixa: false, associados: false, colaboradores: false, utilidades: false, sac: false, agenda: false };
+
+            // Se o itemData for apenas um subtipo (como no caso do 'caixa')
+            if (tipo === 'caixa' && itemData && typeof itemData === 'object' && !itemData.id && itemData.tipo) {
+                 subTipo = itemData;
+                 item = null; // É um novo item, mas com subtipo definido
+            }
+
+            switch (tipo) {
+                case 'caixa':
+                    modalTitulo = item ? 'Ver/Editar Lançamento' : 'Novo Lançamento';
+                    dadosIniciais = { data: new Date().toISOString().split('T')[0], tipo: 'entrada', valor: null, descricao: '', pessoa: '', destino: '' };
+                    if (subTipo?.tipo) dadosIniciais.tipo = subTipo.tipo; // Pré-define tipo p/ novos
+                    break;
+                case 'associados':
+                    modalTitulo = item ? 'Ver/Editar Associado' : 'Novo Associado';
+                    dadosIniciais = { nome: '', endereco: '', telefone: '', email: '', cargo: '', obs: '' };
+                    break;
+                case 'colaboradores':
+                    modalTitulo = item ? 'Ver/Editar Colaborador' : 'Novo Colaborador';
+                    dadosIniciais = { nome: '', endereco: '', telefone: '', email: '', cargo: '', obs: '' };
+                    break;
+                case 'utilidades':
+                    modalTitulo = item ? 'Ver/Editar Local' : 'Novo Local';
+                    dadosIniciais = { nome: '', endereco: '', telefone: '', email: '', descricao: '' };
+                    break;
+                case 'sac':
+                    modalTitulo = item ? 'Ver/Editar Registro SAC' : 'Novo Registro SAC';
+                    dadosIniciais = { nome: '', telefone: '', email: '', endereco: '', tipo: 'reclamacao', descricao: '', status: 'pendente' };
+                    break;
+                case 'agenda':
+                    modalTitulo = item ? 'Ver/Editar Evento' : 'Novo Evento';
+                    dadosIniciais = { dataHora: new Date().toISOString().slice(0, 16), tipo: '', local: '', contato: '', descricao: '', ata: '' };
+                    break;
+                case 'usuarios':
+                    modalTitulo = item ? 'Editar Usuário' : 'Novo Usuário';
+                    dadosIniciais = { login: '', senha: '', isAdmin: false, permissoes: permissoesPadrao };
+                    break;
+                 default:
+                     console.error("Tipo de modal desconhecido:", tipo);
+                     return;
+            }
+            
+            formState = item ? { ...item } : { ...dadosIniciais }; // Copia para não modificar o original
+            
+            // Garante que permissões existem para usuários
+             if (tipo === 'usuarios') {
+                 formState.permissoes = { ...permissoesPadrao, ...(formState.permissoes || {}) };
+             }
+
+
+            if(modalTituloEl) modalTituloEl.textContent = modalTitulo;
+            renderizarFormularioModal(tipo, formState); // Renderiza o form correto
+
+            // Controla visibilidade do botão Salvar
+            const podeEscrever = temPermissaoEscrita(tipo);
+             if(modalSalvarBtn) {
+                 modalSalvarBtn.textContent = formState.id ? 'Salvar Alterações' : 'Criar Registro';
+                 modalSalvarBtn.classList.toggle('hidden', !podeEscrever && !(tipo === 'usuarios' && usuarioAtual?.isAdmin)); // Só admin edita user
+             }
+             // Desabilita fieldset se não puder escrever
+             const fieldset = modalFormContainer ? modalFormContainer.querySelector('fieldset') : null;
+             if(fieldset) {
+                 fieldset.disabled = !podeEscrever && !(tipo === 'usuarios' && usuarioAtual?.isAdmin);
+                 // Exceção: fieldset de usuário só pode ser habilitado pelo admin
+                  if(tipo === 'usuarios' && !usuarioAtual?.isAdmin){
+                      fieldset.disabled = true;
+                  }
+             }
+
+
+            if(modalPrincipal) modalPrincipal.classList.remove('hidden');
+            showModal = true;
+        }
+
+        function fecharModal() {
+            if(modalPrincipal) modalPrincipal.classList.add('hidden');
+            if(modalFormContainer) modalFormContainer.innerHTML = ''; // Limpa form
+            formState = {};
+            modalTipo = '';
+            modalTitulo = '';
+            showModal = false;
+        }
+
+        function abrirModalAta(item) {
+             formState = { ...item }; // Copia dados do evento
+             if(modalAtaEventoTitulo) modalAtaEventoTitulo.textContent = `Evento: ${item.tipo || ''}`;
+             if(modalAtaEventoInfo) modalAtaEventoInfo.textContent = `Local: ${item.local || ''} | Data: ${formatarDataHora(item.dataHora)}`;
+             if(modalAtaTextarea) modalAtaTextarea.value = item.ata || '';
+
+             const podeEscrever = temPermissaoEscrita('agenda');
+             if(modalAtaTextarea) modalAtaTextarea.readOnly = !podeEscrever;
+             if(modalAtaSalvarBtn) modalAtaSalvarBtn.classList.toggle('hidden', !podeEscrever);
+
+             if(modalAta) modalAta.classList.remove('hidden');
+             showAtaModal = true;
+        }
+
+        function fecharModalAta() {
+             if(modalAta) modalAta.classList.add('hidden');
+             formState = {};
+             showAtaModal = false;
+        }
+
+        // Atualiza o formState a cada input/change
+        function handleFormInputChange(event) {
+            const { name, value, type, checked } = event.target;
+            const campo = name;
+            let valorFinal = type === 'checkbox' ? checked : value;
+            
+            // Tratar número
+            if (type === 'number') {
+                valorFinal = value === '' ? null : parseFloat(value);
+            }
+            // Tratar permissões (checkboxes dentro de 'permissoes')
+            if (name.startsWith('perm_')) {
+                 const permKey = name.split('_')[1];
+                 // Garante que permissoes existe antes de tentar atualizar
+                 if (!formState.permissoes) {
+                     formState.permissoes = {};
+                 }
+                 formState = {
+                     ...formState,
+                     permissoes: {
+                         ...formState.permissoes,
+                         [permKey]: checked
+                     }
+                 };
+            } else {
+                 formState = { ...formState, [campo]: valorFinal };
+            }
+            console.log("Form State Updated:", formState); // Debug
+        }
+
+        // --- Renderização dos Formulários do Modal ---
+
+        function renderizarFormularioModal(tipo, data) {
+             if (!modalFormContainer) return;
+             // Define se o fieldset estará desabilitado
+             const isDisabled = !temPermissaoEscrita(tipo) && !(tipo === 'usuarios' && usuarioAtual?.isAdmin);
+             let formHtml = `<fieldset ${isDisabled ? 'disabled' : ''}>`; 
+            
+            switch (tipo) {
+                 case 'caixa':
+                     formHtml += `
+                        <div class="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="form-label">Tipo</label>
+                            <input type="text" class="form-input bg-gray-200" value="${(data.tipo || '').charAt(0).toUpperCase() + (data.tipo || '').slice(1)}" readonly>
+                          </div>
+                          <div>
+                            <label class="form-label">Data</label>
+                            <input type="date" class="form-input" name="data" value="${data.data || new Date().toISOString().split('T')[0]}">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">Valor (R$)</label>
+                          <input type="number" step="0.01" placeholder="Ex: 150.50" class="form-input" name="valor" value="${data.valor || ''}" required>
+                        </div>
+                        <div>
+                          <label class="form-label">Descrição</label>
+                          <input type="text" placeholder="Ex: Compra de material de limpeza" class="form-input" name="descricao" value="${data.descricao || ''}">
+                        </div>
+                        ${data.tipo === 'entrada' ? `
+                          <div>
+                            <label class="form-label">Doador/Origem</label>
+                            <input type="text" placeholder="Ex: Doação de João Silva" class="form-input" name="pessoa" value="${data.pessoa || ''}">
+                          </div>
+                        ` : ''}
+                        ${data.tipo === 'saida' ? `
+                          <div>
+                            <label class="form-label">Destino/Pagamento</label>
+                            <input type="text" placeholder="Ex: Papelaria XYZ" class="form-input" name="destino" value="${data.destino || ''}">
+                          </div>
+                        ` : ''}
+                    `;
+                     break;
+                 case 'associados':
+                 case 'colaboradores':
+                     formHtml += `
+                        <div>
+                          <label class="form-label">Nome Completo</label>
+                          <input type="text" placeholder="Nome" class="form-input" name="nome" value="${data.nome || ''}" required>
+                        </div>
+                        <div>
+                          <label class="form-label">Endereço</label>
+                          <input type="text" placeholder="Rua, número, bairro" class="form-input" name="endereco" value="${data.endereco || ''}">
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="form-label">Telefone</label>
+                            <input type="tel" placeholder="(00) 90000-0000" class="form-input" name="telefone" value="${data.telefone || ''}">
+                          </div>
+                          <div>
+                            <label class="form-label">E-mail</label>
+                            <input type="email" placeholder="email@dominio.com" class="form-input" name="email" value="${data.email || ''}">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">${tipo === 'associados' ? 'Cargo na Associação' : 'Cargo/Função'}</label>
+                          <input type="text" placeholder="${tipo === 'associados' ? 'Ex: Presidente, Tesoureiro' : 'Ex: Voluntário'}" class="form-input" name="cargo" value="${data.cargo || ''}">
+                        </div>
+                        <div>
+                          <label class="form-label">Observação</label>
+                          <textarea rows="3" class="form-textarea" placeholder="Informações adicionais..." name="obs">${data.obs || ''}</textarea>
+                        </div>
+                    `;
+                     break;
+                  case 'utilidades':
+                     formHtml += `
+                        <div>
+                          <label class="form-label">Nome do Estabelecimento</label>
+                          <input type="text" placeholder="Ex: Posto de Saúde (UBS), Bombeiros" class="form-input" name="nome" value="${data.nome || ''}" required>
+                        </div>
+                        <div>
+                          <label class="form-label">Endereço</label>
+                          <input type="text" placeholder="Rua, número, bairro" class="form-input" name="endereco" value="${data.endereco || ''}">
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="form-label">Telefone</label>
+                            <input type="tel" placeholder="Ex: 190, 193, (00) 3000-0000" class="form-input" name="telefone" value="${data.telefone || ''}">
+                          </div>
+                          <div>
+                            <label class="form-label">E-mail</label>
+                            <input type="email" placeholder="contato@servico.com" class="form-input" name="email" value="${data.email || ''}">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">Descrição (Horários, etc.)</label>
+                          <textarea rows="3" class="form-textarea" placeholder="Ex: Atendimento de Seg a Sex, das 8h às 17h" name="descricao">${data.descricao || ''}</textarea>
+                        </div>
+                    `;
+                    break;
+                 case 'sac':
+                      formHtml += `
+                        <div>
+                          <label class="form-label">Tipo de Registro</label>
+                          <select class="form-select" name="tipo">
+                            <option value="reclamacao" ${data.tipo === 'reclamacao' ? 'selected' : ''}>Reclamação</option>
+                            <option value="denuncia" ${data.tipo === 'denuncia' ? 'selected' : ''}>Denúncia</option>
+                            <option value="sugestao" ${data.tipo === 'sugestao' ? 'selected' : ''}>Sugestão</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="form-label">Nome do Reclamante</label>
+                          <input type="text" placeholder="Nome da pessoa" class="form-input" name="nome" value="${data.nome || ''}" required>
+                        </div>
+                        <div>
+                          <label class="form-label">Endereço (se aplicável)</label>
+                          <input type="text" placeholder="Rua, número, bairro" class="form-input" name="endereco" value="${data.endereco || ''}">
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="form-label">Telefone</label>
+                            <input type="tel" placeholder="(00) 90000-0000" class="form-input" name="telefone" value="${data.telefone || ''}">
+                          </div>
+                          <div>
+                            <label class="form-label">E-mail</label>
+                            <input type="email" placeholder="email@dominio.com" class="form-input" name="email" value="${data.email || ''}">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">Descrição da Ocorrência</label>
+                          <textarea rows="4" class="form-textarea" placeholder="Descreva a denúncia, reclamação ou sugestão..." name="descricao" required>${data.descricao || ''}</textarea>
+                        </div>
+                    `;
+                     break;
+                 case 'agenda':
+                     formHtml += `
+                        <div>
+                          <label class="form-label">Tipo de Evento</label>
+                          <input type="text" placeholder="Ex: Reunião, Assembleia, Festa" class="form-input" name="tipo" value="${data.tipo || ''}" required>
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                          <div>
+                             <label class="form-label">Data e Hora</label>
+                            <input type="datetime-local" class="form-input" name="dataHora" value="${data.dataHora || new Date().toISOString().slice(0, 16)}" required>
+                          </div>
+                          <div>
+                            <label class="form-label">Telefone de Contato</label>
+                            <input type="tel" placeholder="(00) 90000-0000" class="form-input" name="contato" value="${data.contato || ''}">
+                          </div>
+                        </div>
+                        <div>
+                          <label class="form-label">Local</label>
+                          <input type="text" placeholder="Ex: Sede da Associação" class="form-input" name="local" value="${data.local || ''}" required>
+                        </div>
+                        <div>
+                          <label class="form-label">Descrição/Pauta</label>
+                          <textarea rows="3" class="form-textarea" placeholder="Informações sobre o evento, pautas..." name="descricao">${data.descricao || ''}</textarea>
+                        </div>
+                    `;
+                     break;
+                  case 'usuarios': // Apenas Admin pode ver/editar
+                      const permissoes = data.permissoes || {};
+                      const permissoesPadrao = { caixa: false, associados: false, colaboradores: false, utilidades: false, sac: false, agenda: false };
+                      formHtml += `
+                        <div>
+                          <label class="form-label">Login</label>
+                          <input type="text" placeholder="Ex: jose.silva" class="form-input" name="login" value="${data.login || ''}" required ${data.login === 'ayoshi' ? 'readonly' : ''}>
+                          ${data.login === 'ayoshi' ? '<p class="text-xs text-gray-500 mt-1">Login do admin padrão não pode ser alterado.</p>' : ''}
+                        </div>
+                        <div>
+                          <label class="form-label">Senha</label>
+                          <input type="text" placeholder="Defina uma senha" class="form-input" name="senha" value="${data.senha || ''}" required>
+                        </div>
+                        <div>
+                          <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="isAdmin" ${data.isAdmin ? 'checked' : ''} ${data.login === 'ayoshi' ? 'disabled' : ''}>
+                            <span class="form-label !mb-0">É Administrador?</span>
+                          </label>
+                          <p class="text-xs text-gray-600 mt-1">Admins podem criar/gerenciar usuários e têm todas as permissões. ${data.login === 'ayoshi' ? '(Admin padrão sempre é admin)' : ''}</p>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-300">
+                          <label class="form-label mb-2">Permissões de Escrita (Criar/Editar/Excluir)</label>
+                          <p class="text-xs text-gray-600 mb-3">Se não marcado, o usuário terá acesso de "somente leitura" ao módulo. (Admins sempre têm acesso total).</p>
+                          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            ${Object.keys(permissoesPadrao).map(perm => `
+                              <div>
+                                <label class="flex items-center space-x-2">
+                                  <input type="checkbox" name="perm_${perm}" ${permissoes[perm] ? 'checked' : ''}>
+                                  <span class="form-label !mb-0 capitalize">${perm}</span>
+                                </label>
+                              </div>
+                            `).join('')}
+                          </div>
+                        </div>
+                    `;
+                     break;
+            }
+             formHtml += `</fieldset>`;
+             modalFormContainer.innerHTML = formHtml;
+             // Adiciona listeners aos inputs/selects/textareas DENTRO do modal
+             modalFormContainer.querySelectorAll('input, select, textarea').forEach(el => {
+                  // Remove listener antigo se existir, antes de adicionar o novo
+                 el.replaceWith(el.cloneNode(true)); 
+                 modalFormContainer.querySelector(`[name="${el.name}"]`)?.addEventListener('input', handleFormInputChange);
+                 modalFormContainer.querySelector(`[name="${el.name}"]`)?.addEventListener('change', handleFormInputChange); // Para selects e checkboxes
+             });
+        }
+
+        // --- Funções de Banco de Dados ---
+
+        function getCollectionPath(colecao) {
+             // Usa appId definido globalmente (seja do ambiente ou do firebaseConfig.projectId)
+            return `artifacts/${appId}/public/data/${colecao}`;
+        }
+
+        function iniciarListeners() {
+            unsubscribers.forEach(unsub => unsub());
+            unsubscribers = [];
+
+            const colecoes = ['caixa', 'associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'historico', 'usuarios'];
+
+            colecoes.forEach(nomeColecao => {
+                 // Admin pode ver 'usuarios', os outros não precisam (mas o listener fica ativo para o admin)
+                if (nomeColecao === 'usuarios' && !usuarioAtual?.isAdmin) {
+                    usuarios = []; // Limpa se deixar de ser admin
+                    return;
+                }
+                
+                const q = query(collection(db, getCollectionPath(nomeColecao)));
+                
+                const unsub = onSnapshot(q, (snapshot) => {
+                    let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Ordenação em memória
+                    data.sort((a, b) => {
+                         if (!a || !b) return 0; // Adiciona verificação para itens nulos/indefinidos
+                         if (nomeColecao === 'caixa' || nomeColecao === 'historico') {
+                             // Tenta converter para Data, usa 0 se falhar
+                             const dateA = a.data ? new Date(a.data).getTime() : 0;
+                             const dateB = b.data ? new Date(b.data).getTime() : 0;
+                             if(isNaN(dateA) || isNaN(dateB)) return 0; // Evita NaN
+                             return dateB - dateA;
+                         }
+                         if (nomeColecao === 'agenda') {
+                              const dateA = a.dataHora ? new Date(a.dataHora).getTime() : 0;
+                              const dateB = b.dataHora ? new Date(b.dataHora).getTime() : 0;
+                              if(isNaN(dateA) || isNaN(dateB)) return 0;
+                              return dateA - dateB;
+                         }
+                         if (nomeColecao === 'associados' || nomeColecao === 'colaboradores' || nomeColecao === 'usuarios') {
+                             return (a.nome || a.login || '').localeCompare(b.nome || b.login || '');
+                         }
+                         return 0; // Para outras coleções sem ordenação específica
+                    });
+
+                    // Atualiza o array correspondente
+                    switch (nomeColecao) {
+                      case 'caixa': caixa = data; break;
+                      case 'associados': associados = data; break;
+                      case 'colaboradores': colaboradores = data; break;
+                      case 'utilidades': utilidades = data; break;
+                      case 'sac': sac = data; break;
+                      case 'agenda': agenda = data; break;
+                      case 'historico': historico = data; break;
+                      case 'usuarios': usuarios = data; break;
+                    }
+                     // Re-renderiza a página atual se ela for a que foi atualizada
+                     if (nomeColecao === paginaAtual || (paginaAtual === 'inicio' && ['caixa', 'associados', 'sac'].includes(nomeColecao))) {
+                        renderizarPagina();
+                    }
+                }, (error) => {
+                    console.error(`Erro ao carregar coleção ${nomeColecao}:`, error);
+                     // Mostra erro para o usuário (melhorar com um toast/modal)
+                     alert(`Erro ao carregar dados de ${nomeColecao}. Verifique o console.`);
+                });
+                
+                unsubscribers.push(unsub);
+            });
+        }
+
+        async function salvarItem() {
+            if (!formState || !modalTipo) return;
+
+            isLoading = true;
+            updateLoadingState();
+
+            const tipo = modalTipo;
+            const itemParaSalvar = { ...formState }; // Copia estado atual do form
+            const ehEdicao = !!itemParaSalvar.id;
+            const id = itemParaSalvar.id; // Guarda o ID se for edição
+            delete itemParaSalvar.id; // Remove ID dos dados a serem salvos
+
+             // Garante que usuário que registrou está presente em novos itens
+             if (!ehEdicao) {
+                 itemParaSalvar.usuario = usuarioAtual?.login || 'desconhecido';
+             }
+             // Garante estrutura de permissões para usuários
+             if (tipo === 'usuarios') {
+                  const permissoesPadrao = { caixa: false, associados: false, colaboradores: false, utilidades: false, sac: false, agenda: false };
+                 itemParaSalvar.permissoes = {...permissoesPadrao, ...(itemParaSalvar.permissoes || {}) };
+                 // Admin padrão sempre tem isAdmin true
+                 if(itemParaSalvar.login === 'ayoshi') {
+                     itemParaSalvar.isAdmin = true;
+                 }
+             }
+
+            try {
+                if (ehEdicao) {
+                    const docRef = doc(db, getCollectionPath(tipo), id);
+                    await updateDoc(docRef, itemParaSalvar);
+                    await registrarHistorico(`Editou ${tipo}`, `ID: ${id}`);
+                } else {
+                    // Validar campos obrigatórios (exemplo para usuários)
+                    if (tipo === 'usuarios' && (!itemParaSalvar.login || !itemParaSalvar.senha)) {
+                        throw new Error("Login e Senha são obrigatórios para criar usuário.");
+                    }
+                     // Validar valor no caixa
+                     if (tipo === 'caixa' && (itemParaSalvar.valor === null || itemParaSalvar.valor === undefined || isNaN(itemParaSalvar.valor))) {
+                         throw new Error("O campo 'Valor' é obrigatório e deve ser um número.");
+                     }
+                    const docRef = await addDoc(collection(db, getCollectionPath(tipo)), itemParaSalvar);
+                    await registrarHistorico(`Criou ${tipo}`, `ID: ${docRef.id}`);
+                }
+                fecharModal();
+                 // Força re-renderização da página após salvar para garantir atualização da UI
+                 renderizarPagina(); 
+            } catch (e) {
+                console.error(`Erro ao salvar ${tipo}:`, e);
+                alert(`Erro ao salvar: ${e.message}`); // Usar modal customizado
+            } finally {
+                isLoading = false;
+                updateLoadingState();
+            }
+        }
+
+        async function excluirItem(tipo, id, nome) {
+             // IMPLEMENTAR MODAL DE CONFIRMAÇÃO AQUI
+             if (!confirm(`Tem certeza que deseja excluir "${nome || id}"? Esta ação não pode ser desfeita.`)) {
+                 return;
+             }
+             console.warn(`Exclusão de ${tipo} (ID: ${id}) confirmada.`);
+
+             isLoading = true;
+             updateLoadingState();
+             try {
+                 const docRef = doc(db, getCollectionPath(tipo), id);
+                 await deleteDoc(docRef);
+                 await registrarHistorico(`Excluiu ${tipo}`, `Item: "${nome || ''}" (ID: ${id})`);
+                  // Força re-renderização da página após excluir
+                  renderizarPagina(); 
+             } catch (e) {
+                 console.error(`Erro ao excluir ${tipo}:`, e);
+                 alert(`Erro ao excluir: ${e.message}`); // Usar modal customizado
+             } finally {
+                 isLoading = false;
+                 updateLoadingState();
+             }
+        }
+
+        async function salvarAta() {
+             const item = formState;
+             if (!item || !item.id) return;
+
+             isLoading = true;
+             updateLoadingState();
+             try {
+                 const docRef = doc(db, getCollectionPath('agenda'), item.id);
+                 // Lê o valor atualizado do textarea diretamente
+                 const ataText = modalAtaTextarea ? modalAtaTextarea.value : item.ata;
+                 await updateDoc(docRef, { ata: ataText });
+                 await registrarHistorico("Editou ATA", `Evento: ${item.tipo || ''} (ID: ${item.id})`);
+                 fecharModalAta();
+                  // Força re-renderização da página após salvar ATA
+                  if(paginaAtual === 'agenda') renderizarPagina(); 
+             } catch (e) {
+                 console.error("Erro ao salvar ATA:", e);
+                 alert(`Erro ao salvar ATA: ${e.message}`); // Usar modal
+             } finally {
+                 isLoading = false;
+                 updateLoadingState();
+             }
+        }
+
+        async function mudarStatusSac(id, status) {
+             isLoading = true;
+             updateLoadingState();
+             try {
+                 const docRef = doc(db, getCollectionPath('sac'), id);
+                 await updateDoc(docRef, { status: status });
+                 await registrarHistorico("Mudou Status SAC", `ID: ${id} para ${status}`);
+                 // A atualização via onSnapshot deve cuidar de re-renderizar, mas podemos forçar se necessário
+                 // renderizarPagina(); 
+             } catch (e) {
+                 console.error("Erro ao mudar status do SAC:", e);
+                 alert(`Erro ao mudar status: ${e.message}`); // Usar modal
+             } finally {
+                 isLoading = false;
+                 updateLoadingState();
+             }
+        }
+
+        async function registrarHistorico(acao, detalhes, usuarioLogin = null) {
+            try {
+                 // Evita registrar histórico se não houver usuário logado (acontece durante a criação do admin)
+                 const userLogin = usuarioLogin || usuarioAtual?.login;
+                 if (!userLogin && acao !== 'Admin Criado') { // Permite registro da criação do admin
+                      console.warn("Tentativa de registrar histórico sem usuário logado:", acao);
+                      return; 
+                 }
+
+                const colecao = getCollectionPath('historico');
+                const novoHistorico = {
+                    data: new Date().toISOString(),
+                    usuario: userLogin || 'sistema',
+                    acao: acao,
+                    detalhes: detalhes
+                };
+                await addDoc(collection(db, colecao), novoHistorico);
+            } catch (e) {
+                console.error("Erro ao registrar histórico:", e);
+            }
+        }
+
+        // --- Função de Permissão ---
+        function temPermissaoEscrita(modulo) {
+            if (!usuarioAtual) return false;
+            if (usuarioAtual.isAdmin) return true; // Admin pode tudo
+            if (modulo === 'usuarios') return false; // Só admin mexe em usuários
+            // Garante que permissoes existe antes de checar
+            return usuarioAtual.permissoes?.[modulo] || false;
+        }
+
+        // --- Funções de Backup / Restauração ---
+        
+        async function fazerBackup() {
+            isLoading = true;
+            updateLoadingState();
+            try {
+                const backupData = {};
+                const colecoes = ['caixa', 'associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'usuarios', 'historico'];
+                
+                for (const colecao of colecoes) {
+                    if(colecao === 'usuarios' && !usuarioAtual?.isAdmin) continue; // Só admin faz backup de usuários
+                    
+                    const q = query(collection(db, getCollectionPath(colecao)));
+                    const snapshot = await getDocs(q);
+                    backupData[colecao] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
+                
+                const json = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup_associacao_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                await registrarHistorico("Backup", "Backup de dados realizado.");
+                
+            } catch (e) {
+                console.error("Erro ao fazer backup:", e);
+                alert(`Erro ao fazer backup: ${e.message}`); // Usar modal
+            } finally {
+                isLoading = false;
+                updateLoadingState();
+            }
+        }
+
+        function restaurarBackup(event) {
+             const file = event.target.files[0];
+             if (!file) return;
+
+             // IMPLEMENTAR MODAL DE CONFIRMAÇÃO AQUI
+             if (!confirm("ATENÇÃO! Isso irá SOBRESCREVER todos os dados atuais com os dados do arquivo. Deseja continuar?")) {
+                 event.target.value = null; // Limpa seleção
+                 return;
+             }
+             console.warn("Restauração iniciada.");
+
+             isLoading = true;
+             updateLoadingState();
+             const reader = new FileReader();
+             
+             reader.onload = async (e) => {
+                 try {
+                     const json = e.target?.result;
+                     const backupData = JSON.parse(json);
+                     
+                     const batch = writeBatch(db);
+                     
+                     // PRIMEIRO: Deletar todos os documentos existentes (exceto admin 'ayoshi')
+                      console.log("Iniciando exclusão de dados antigos...");
+                      const colecoesParaLimpar = ['caixa', 'associados', 'colaboradores', 'utilidades', 'sac', 'agenda', 'historico'];
+                       if (usuarioAtual?.isAdmin) {
+                           colecoesParaLimpar.push('usuarios'); // Admin pode limpar usuários
+                       }
+
+                       for (const colecao of colecoesParaLimpar) {
+                           const path = getCollectionPath(colecao);
+                           const snapshot = await getDocs(collection(db, path));
+                           snapshot.forEach(docSnap => {
+                                // NÃO deleta o usuário admin 'ayoshi'
+                                if (colecao === 'usuarios' && docSnap.data().login === 'ayoshi') {
+                                    return; 
+                                }
+                               batch.delete(docSnap.ref);
+                           });
+                           console.log(`Documentos da coleção ${colecao} marcados para exclusão.`);
+                       }
+                       console.log("Exclusão marcada. Aguardando commit...");
+                       // await batch.commit(); // Executa a exclusão primeiro? Não, fazer junto com a adição.
+                       // console.log("Dados antigos excluídos.");
+
+                     // SEGUNDO: Adicionar/Sobrescrever dados do backup
+                     console.log("Iniciando adição/sobrescrita de dados do backup...");
+                     for (const colecao in backupData) {
+                         // Só restaura usuários se for admin
+                         if(colecao === 'usuarios' && !usuarioAtual?.isAdmin) {
+                              console.log("Pulando restauração de usuários (não é admin).");
+                              continue; 
+                         }
+                         
+                         const path = getCollectionPath(colecao);
+                         const dadosColecao = backupData[colecao];
+                         console.log(`Restaurando ${dadosColecao.length} itens para ${colecao}...`);
+                         
+                         for (const item of dadosColecao) {
+                             const id = item.id;
+                             // Validação básica para evitar erros
+                             if (!id || typeof id !== 'string') {
+                                 console.warn(`Item inválido encontrado no backup para coleção '${colecao}', pulando:`, item);
+                                 continue; 
+                             }
+                              // NÃO sobrescreve o usuário admin 'ayoshi' se ele já existe
+                              if (colecao === 'usuarios' && item.login === 'ayoshi') {
+                                   console.log("Pulando restauração do usuário admin 'ayoshi'.");
+                                   continue;
+                              }
+
+                             const dados = { ...item };
+                             delete dados.id;
+                             
+                             const docRef = doc(db, path, id); // Usa o ID original
+                             batch.set(docRef, dados); // Use set para sobrescrever ou criar
+                         }
+                     }
+                     
+                      console.log("Adição/sobrescrita marcada. Executando commit final...");
+                     await batch.commit(); // Executa todas as exclusões e adições
+                      console.log("Batch commit concluído.");
+                     
+                     await registrarHistorico("Restauração", "Dados restaurados a partir de backup.");
+                     alert("Restauração concluída com sucesso! A página será recarregada."); // Usar modal
+                     window.location.reload(); // Recarrega a página para refletir tudo
+                     
+                 } catch (err) {
+                     console.error("Erro ao restaurar backup:", err);
+                     alert(`Erro ao ler ou processar o arquivo de backup: ${err.message}`); // Usar modal
+                 } finally {
+                     isLoading = false;
+                     updateLoadingState();
+                     event.target.value = null; // Limpa input
+                 }
+             };
+             reader.onerror = (err) => {
+                  console.error("Erro ao ler arquivo:", err);
+                  alert(`Erro ao ler o arquivo: ${err.message}`);
+                  isLoading = false;
+                  updateLoadingState();
+                  event.target.value = null;
+             };
+             reader.readAsText(file);
+        }
+
+
+        // --- Funções de Impressão (PDF) ---
+        // Assume que jsPDF e autoTable estão carregados globalmente
+
+        function getJsPDF() {
+            // @ts-ignore (ignora erro TS sobre 'jspdf')
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                console.error("jsPDF não está carregado.");
+                alert("Erro: A biblioteca de PDF não pôde ser carregada. Verifique sua conexão ou bloqueador de anúncios.");
+                return null;
+            }
+            // @ts-ignore
+            return new window.jspdf.jsPDF();
+        }
+
+        function imprimirComprovantePDF(item) {
+             if (!item) return; // Adiciona verificação
+            const doc = getJsPDF();
+            if (!doc) return;
+
+            const tipo = item.tipo === 'entrada' ? 'COMPROVANTE DE ENTRADA' : 'COMPROVANTE DE SAÍDA';
+            const pessoaLabel = item.tipo === 'entrada' ? 'Recebido de:' : 'Pago para:';
+            const pessoaNome = item.tipo === 'entrada' ? item.pessoa : item.destino;
+
+            doc.setFontSize(18);
+            doc.text(associacaoNome(), 105, 20, { align: 'center' });
+            doc.setFontSize(14);
+            doc.text(tipo, 105, 30, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text(`Data: ${formatarData(item.data)}`, 20, 50);
+            doc.text(`Valor: ${formatarMoeda(item.valor)}`, 20, 60);
+            doc.text(`Descrição: ${item.descricao || 'N/A'}`, 20, 70);
+            doc.text(`${pessoaLabel} ${pessoaNome || 'N/A'}`, 20, 80);
+
+            doc.text('___________________________________', 105, 110, { align: 'center' });
+            doc.text('Assinatura Responsável', 105, 120, { align: 'center' });
+
+            doc.save(`comprovante_${item.tipo}_${(item.id || 'novo').slice(0, 5)}.pdf`);
+        }
+
+        function gerarRelatorioCaixaPDF() {
+            const doc = getJsPDF();
+            if (!doc) return;
+
+            doc.setFontSize(18);
+            doc.text("Relatório Financeiro do Caixa", 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(associacaoNome(), 105, 30, { align: 'center' });
+
+            const head = [['Data', 'Tipo', 'Descrição', 'Origem/Destino', 'Valor (R$)']];
+            const body = (caixa || []).map(item => [ // Garante que caixa é um array
+                formatarData(item?.data), // Adiciona verificação para item nulo
+                item?.tipo,
+                item?.descricao || '',
+                (item?.tipo === 'entrada' ? item?.pessoa : item?.destino) || '',
+                formatarMoeda(item?.valor || 0)
+            ]);
+
+            const totais = calcularTotaisCaixa();
+
+            // Usa a função 'autoTable' que agora está anexada ao objeto 'doc'
+             doc.autoTable({
+                startY: 40,
+                head: head,
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [22, 160, 133] }, // Verde
+                didDrawPage: (data) => {
+                    doc.setFontSize(10);
+                    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+                    const y = pageHeight - 15;
+                    doc.text(`Total Entradas: ${formatarMoeda(totais.entradas)}`, data.settings.margin.left, y);
+                    doc.text(`Total Saídas: ${formatarMoeda(totais.saidas)}`, 105, y, { align: 'center' });
+                    doc.text(`Saldo Atual: ${formatarMoeda(totais.saldo)}`, doc.internal.pageSize.width - data.settings.margin.right, y, { align: 'right' });
+                }
+            });
+
+
+            doc.save(`relatorio_caixa_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+        
+        function imprimirListaPDF(tipo, dados, colunas) {
+             if (!dados) dados = []; // Garante que dados é um array
+            const doc = getJsPDF();
+            if (!doc) return;
+
+             const titulo = `Lista de ${(tipo.charAt(0).toUpperCase() + tipo.slice(1))}`;
+             doc.setFontSize(18);
+             doc.text(titulo, 105, 20, { align: 'center' });
+             doc.setFontSize(12);
+             doc.text(associacaoNome(), 105, 30, { align: 'center' });
+
+             const head = [colunas]; // Colunas já vêm formatadas
+             
+             const body = dados.map(item => {
+                  if (!item) return []; // Pula itens inválidos
+                 let linha = [];
+                 if (tipo === 'associados' || tipo === 'colaboradores') {
+                     linha = [item.nome || '', item.email || '', item.telefone || '', item.cargo || ''];
+                 } else if (tipo === 'utilidades') {
+                     linha = [item.nome || '', item.telefone || '', item.endereco || ''];
+                 } else if (tipo === 'agenda') {
+                     linha = [formatarDataHora(item.dataHora) || '', item.tipo || '', item.local || ''];
+                 }
+                 // Remove a coluna de Ações se ela existir no header original
+                 return linha.slice(0, colunas.length); 
+             });
+
+              doc.autoTable({
+                 startY: 40,
+                 head: head,
+                 body: body.filter(row => row.length > 0), // Filtra linhas vazias
+                 theme: 'grid',
+                 headStyles: { fillColor: [41, 128, 185] }, // Azul
+             });
+             
+             doc.save(`lista_${tipo}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
+        function imprimirSacPDF(item) {
+             if (!item) return; // Adiciona verificação
+             const doc = getJsPDF();
+             if (!doc) return;
+
+             const tipoCapitalized = (item.tipo || '').charAt(0).toUpperCase() + (item.tipo || '').slice(1);
+             const statusCapitalized = (item.status || '').charAt(0).toUpperCase() + (item.status || '').slice(1);
+
+             doc.setFontSize(18);
+             doc.text(`Registro SAC - ${tipoCapitalized}`, 105, 20, { align: 'center' });
+             doc.setFontSize(12);
+             doc.text(associacaoNome(), 105, 30, { align: 'center' });
+             
+             doc.setFontSize(12);
+              doc.autoTable({
+                 startY: 40,
+                 body: [
+                     ['Status', statusCapitalized],
+                     ['Reclamante', item.nome || ''],
+                     ['Telefone', item.telefone || ''],
+                     ['Email', item.email || ''],
+                     ['Endereço', item.endereco || ''],
+                     ['Descrição', item.descricao || ''],
+                 ],
+                 theme: 'grid',
+                 columnStyles: { 0: { fontStyle: 'bold', fillColor: [230, 230, 230] } }
+             });
+
+             doc.save(`sac_${(item.id || 'novo').slice(0, 5)}.pdf`);
+        }
+
+        // --- Funções Utilitárias ---
+        
+        function associacaoNome() {
+            return "Associação de Moradores do Jardim John Kennedy";
+        }
+
+        function formatarMoeda(valor) {
+            if (isNaN(valor) || valor === null) valor = 0;
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        
+        function formatarData(dataISO) {
+            if (!dataISO) return 'N/A';
+            try {
+                // Tenta criar data. Se for inválida, retorna original.
+                const data = new Date(dataISO + 'T00:00:00Z'); // Adiciona Z para indicar UTC
+                 if (isNaN(data.getTime())) return dataISO; 
+                 // Formata usando UTC para evitar problemas de fuso horário
+                 return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            } catch (e) {
+                 console.warn("Erro ao formatar data:", dataISO, e);
+                return dataISO; // Retorna original em caso de erro
+            }
+        }
+
+
+        function formatarDataHora(dataHoraISO) {
+            if (!dataHoraISO) return 'N/A';
+            try {
+                const data = new Date(dataHoraISO);
+                 // Verifica se a data é válida
+                 if (isNaN(data.getTime())) return dataHoraISO;
+                // Formata usando o fuso horário local do navegador
+                return data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                console.warn("Erro ao formatar data/hora:", dataHoraISO, e);
+                return dataHoraISO;
+            }
+        }
+
+
+        function statusClasses(status) {
+            if (status === 'resolvido') return 'status-green';
+            if (status === 'analise') return 'status-yellow';
+            return 'status-red'; // pendente ou outro
+        }
+
+         function calcularTotaisCaixa() {
+             // Garante que caixa é um array antes de filtrar/reduzir
+            const safeCaixa = Array.isArray(caixa) ? caixa : []; 
+            const entradas = safeCaixa.filter(l => l && l.tipo === 'entrada').reduce((acc, l) => acc + (l.valor || 0), 0);
+            const saidas = safeCaixa.filter(l => l && l.tipo === 'saída').reduce((acc, l) => acc + (l.valor || 0), 0);
+            return { entradas, saidas, saldo: entradas - saidas };
+        }
+
+        function calcularSaldoCaixa() {
+             const { entradas, saidas } = calcularTotaisCaixa();
+             return entradas - saidas;
+        }
+
+         function filtrarDados(dados, campos) {
+             if (!dados) dados = []; // Garante que é um array
+             if (!filtroTermo) return dados;
+             const termoLower = filtroTermo.toLowerCase();
+             return dados.filter(item => {
+                  if (!item) return false; // Pula itens inválidos
+                 return campos.some(campo => item[campo]?.toString().toLowerCase().includes(termoLower)); // Converte para string antes de includes
+             });
+         }
+
+        // --- Event Listeners Globais (usando delegação) ---
+        function setupEventListeners() {
+            // Login
+            if (loginForm) loginForm.addEventListener('submit', fazerLogin);
+
+            // Botão Menu Mobile
+            if (menuMobileButton) menuMobileButton.addEventListener('click', toggleMenuMobile);
+
+             // Fechar Modais
+            if (modalFecharBtnX) modalFecharBtnX.addEventListener('click', fecharModal);
+            if (modalCancelarBtn) modalCancelarBtn.addEventListener('click', fecharModal);
+            if (modalAtaFecharBtnX) modalAtaFecharBtnX.addEventListener('click', fecharModalAta);
+            if (modalAtaCancelarBtn) modalAtaCancelarBtn.addEventListener('click', fecharModalAta);
+
+            // Salvar Modais
+            if (modalSalvarBtn) modalSalvarBtn.addEventListener('click', salvarItem);
+            if (modalAtaSalvarBtn) modalAtaSalvarBtn.addEventListener('click', salvarAta);
+            
+            // Input de restauração (Movido para renderizarInicio para garantir que o elemento exista)
+
+             // Delegação de eventos para botões dentro do mainContent e modais
+             document.body.addEventListener('click', (event) => {
+                 const targetButton = event.target.closest('button[data-action]'); // Procura botão com data-action
+                 if (!targetButton) return;
+
+                 const action = targetButton.dataset.action;
+                 const tipo = targetButton.dataset.tipo;
+                 const id = targetButton.dataset.id;
+                 const nome = targetButton.dataset.nome;
+                  // Correção: JSON.parse precisa de string válida, tratar null/undefined
+                 const subTypeData = targetButton.dataset.subtype ? JSON.parse(targetButton.dataset.subtype || '{}') : null; 
+                 
+                 let item = null;
+                 if (id) {
+                      // Garante que os arrays de dados existem antes de procurar
+                      switch (tipo) {
+                         case 'caixa': item = (caixa || []).find(i => i && i.id === id); break;
+                         case 'associados': item = (associados || []).find(i => i && i.id === id); break;
+                         case 'colaboradores': item = (colaboradores || []).find(i => i && i.id === id); break;
+                         case 'utilidades': item = (utilidades || []).find(i => i && i.id === id); break;
+                         case 'sac': item = (sac || []).find(i => i && i.id === id); break;
+                         case 'agenda': item = (agenda || []).find(i => i && i.id === id); break;
+                         case 'usuarios': item = (usuarios || []).find(i => i && i.id === id); break;
+                      }
+                 }
+
+                 switch (action) {
+                     case 'abrirModal':
+                         abrirModal(tipo, item, subTypeData); // Passa item ou subtipo
+                         break;
+                     case 'excluirItem':
+                          if(id) excluirItem(tipo, id, nome);
+                         break;
+                    case 'abrirModalAta':
+                         if(item) abrirModalAta(item);
+                         break;
+                    case 'imprimirComprovante':
+                         if(item) imprimirComprovantePDF(item);
+                         break;
+                    case 'imprimirSac':
+                         if(item) imprimirSacPDF(item);
+                         break;
+                 }
+             });
+
+              // Delegação para mudança de status do SAC
+              document.body.addEventListener('change', (event) => {
+                  const targetSelect = event.target;
+                  // Verifica se é um select com a classe correta e tem data-id
+                  if (targetSelect.matches('.status-select[data-id]')) { 
+                       const id = targetSelect.dataset.id;
+                       const status = targetSelect.value;
+                       if (id && status) {
+                           mudarStatusSac(id, status);
+                       }
+                  }
+              });
+
+               // Botões PDF fora da delegação principal (usando IDs específicos)
+               document.body.addEventListener('click', (event) => {
+                   const targetButton = event.target.closest('button'); // Apenas botões
+                   if(!targetButton || !targetButton.id) return; // Precisa de ID
+
+                   switch (targetButton.id) {
+                       case 'backup-btn': fazerBackup(); break;
+                       case 'relatorio-caixa-pdf-btn': gerarRelatorioCaixaPDF(); break;
+                       case 'imprimir-lista-associados-btn': imprimirListaPDF('associados', filtrarDados(associados, ['nome', 'email']), ['Nome', 'E-mail', 'Telefone', 'Cargo']); break;
+                       case 'imprimir-lista-colaboradores-btn': imprimirListaPDF('colaboradores', filtrarDados(colaboradores, ['nome', 'email']), ['Nome', 'E-mail', 'Telefone', 'Cargo']); break;
+                       case 'imprimir-lista-utilidades-btn': imprimirListaPDF('utilidades', utilidades, ['Estabelecimento', 'Telefone', 'Endereço']); break;
+                       case 'imprimir-lista-agenda-btn': imprimirListaPDF('agenda', agenda, ['Data e Hora', 'Tipo', 'Local']); break;
+                   }
+               });
+        }
+        
+        // Função global para adicionar listeners em elementos dinâmicos (se necessário)
+        // Por agora, a delegação no body deve cobrir a maioria dos casos
+        function addEventListenersGlobais() {
+           // Exemplo: document.querySelectorAll('.classe-especifica').forEach(...)
+           // No momento, não parece necessário com a estrutura atual
+        }
+
+
+    </script>
+</body>
+</html>
+
